@@ -1,0 +1,5 @@
+/.vscode
+poetry.lock
+/ExperimentalData
+./venv
+*__pycache__

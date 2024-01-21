@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "structured_light_tomography"
+version = "0.1.0"
+description = ""
+authors = ["Marcos Gil <marcosgildeoliveira@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+numpy = "^1.26.3"
+scipy = "^1.12.0"
+matplotlib = "^3.8.2"
+torch = "^2.1.2"
+torchvision = "^0.16.2"
+ipykernel = "^6.29.0"
+h5py = "^3.10.0"
+tifffile = "^2023.12.9"
+quantum-samplers = {git = "https://github.com/marcsgil/quantum_samplers.git"}
+partially-coherent-sources = {git = "https://github.com/marcsgil/partially_coherent_sources.git"}
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -3,3 +3,4 @@ poetry.lock
 /ExperimentalData
 ./venv
 *__pycache__
+/runs/

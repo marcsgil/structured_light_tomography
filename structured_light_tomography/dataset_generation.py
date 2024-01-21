@@ -1,3 +1,5 @@
+import cv2
+from noise import pnoise2
 import numpy as np
 from abc import (ABC, abstractmethod)
 from dataclasses import dataclass
@@ -6,11 +8,14 @@ from multimethod import multimethod
 from structured_light import fixed_order_basis
 from einsumt import einsumt as einsum
 import matplotlib.pyplot as plt
+from structured_light_tomography.photocount_treatment import array_representation
+
 import torch
+from torchvision.transforms import v2
 
 
 @dataclass
-class FixedOrderDataset(ABC):
+class FixedOrderModes(ABC):
     order: int
     grid_res: int
     rmax: float
@@ -55,17 +60,22 @@ def standardize(cs):
 
 
 @dataclass
-class PureDataset(FixedOrderDataset):
+class PureModes(FixedOrderModes):
     @multimethod
-    def generate_dataset(self, c):
+    def generate_dataset(self, c, augment=False):
         basis = self.get_basis()
         result = einsum('mk,knij->mnij', c, basis)
-        return np.real(result*result.conj()), real_representation(c)
+        x = np.real(result*result.conj())
+        if augment:
+            x, y = augment_dataset(x, real_representation(c))
+            return x.numpy(), y.numpy()
+        else:
+            return x, real_representation(c)
 
     @multimethod
-    def generate_dataset(self, n_samples: int):
+    def generate_dataset(self, n_samples: int, augment=False):
         c = sample_haar_vectors(n_samples, self.order+1)
-        return self.generate_dataset(c)
+        return self.generate_dataset(c, augment)
 
     def translate_output(self, y, make_first_real=False):
         if make_first_real:
@@ -77,7 +87,7 @@ class PureDataset(FixedOrderDataset):
 
 
 @dataclass
-class MixedDataset(FixedOrderDataset):
+class MixedModes(FixedOrderModes):
 
     @multimethod
     def generate_dataset(self, rhos):
@@ -136,3 +146,81 @@ class MixedDataset(FixedOrderDataset):
                 rhos[n, k, j] = np.conj(entry)
 
         return rhos
+
+
+def generate_perlin_noise_2d(shape, scale, strength):
+    I = 10 * np.random.randn()
+    J = 10 * np.random.randn()
+    noise = np.zeros(shape)
+    for i in range(shape[0]):
+        for j in range(shape[1]):
+            noise[i, j] = pnoise2(I + i / scale, J + j / scale)
+
+    noise = (noise - np.mean(noise)) / np.std(noise) * strength + 1
+    return noise
+
+
+def random_pad(img, max_ratio):
+    max_pad = int(img.shape[1] * max_ratio)
+    h_or_v = np.random.randint(2)
+    pad = np.random.randint(max_pad)
+
+    if h_or_v == 0:
+        result = np.pad(img, ((0, 0), (pad//2, pad//2)), 'minimum')
+    else:
+        result = np.pad(img, ((pad//2, pad//2), (0, 0)), 'minimum')
+
+    max = np.max(result)
+    result *= 255.0 / max
+
+    return cv2.resize(result.astype(np.uint8), (img.shape[1], img.shape[0])) * max/255
+
+
+def random_roll(img, max_ratio):
+    max_roll = int(img.shape[1] * max_ratio)
+    roll = np.random.randint(-max_roll, max_roll)
+
+    return np.roll(img, roll, axis=1)
+
+
+def augment_dataset(x, y,
+                    alpha=50.0,
+                    sigma=5.0,
+                    pad_ratio=0.2,
+                    roll_ratio=0.1,
+                    perlin_scale=15,
+                    perlin_strength=0.3):
+    mean = [x[:, n, :, :].mean() for n in range(x.shape[1])]
+    std = [x[:, n, :, :].std() for n in range(x.shape[1])]
+
+    for img in x:
+        for n in range(2):
+            img[n] = random_roll(random_pad(img[n], pad_ratio), roll_ratio)
+            img[n] *= generate_perlin_noise_2d(img[n].shape,
+                                               perlin_scale, perlin_strength)
+
+    X = v2.Compose([
+        torch.from_numpy,
+        v2.ElasticTransform(alpha, sigma),
+        v2.Normalize(mean=mean, std=std),
+    ])(x)
+    Y = torch.from_numpy(y)
+    return X, Y
+
+
+def sample_photons(x, n_samples):
+    for image in x:
+        image[0] -= image[0].min()
+        image[1] -= image[1].min()
+        N = np.sum(image, axis=(1, 2))
+        image[0] /= N[0]
+        image[1] /= N[1]
+        probabilities = image.flatten() / image.sum()
+        history = np.random.choice(
+            np.arange(len(probabilities)), n_samples, p=probabilities)
+        image[:, :, :] = array_representation(history, image.shape)
+
+    mean = [x[:, n, :, :].mean() for n in range(x.shape[1])]
+    std = [x[:, n, :, :].std() for n in range(x.shape[1])]
+
+    return v2.Normalize(mean=mean, std=std)(torch.from_numpy(x)).numpy()

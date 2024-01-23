@@ -3,6 +3,7 @@ using ClassicalOrthogonalPolynomials, CoherentNoise,
     Tullio, LinearAlgebra, Images,
     Plots, HDF5
 
+include("samplers.jl")
 
 #Basic functions
 
@@ -25,12 +26,11 @@ end
 
 get_basis(order, rs) = get_basis(order, rs, rs)
 
-function generate_coeficients(order, N, type=ComplexF32)
-    c = randn(type, order + 1, N)
-    mapslices(normalize, c, dims=1)
-end
+#Pure state representations
 
-function real_representation(c)
+struct PureState end
+
+function real_representation(c, ::PureState)
     #Represents the coeficients c as a real array.
     #We stack the real and then the imaginary part.
     D = size(c, 1)
@@ -40,23 +40,102 @@ function real_representation(c)
     result
 end
 
-function complex_representation(y)
+function complex_representation(y, ::PureState)
     @views y[1:end÷2, :] + im * y[end÷2+1:end, :]
 end
 
-function generate_dataset(order, c::AbstractMatrix, rs)
+function generate_dataset(order, c, rs, ::PureState)
     basis = get_basis(order, rs)
 
     #In one line we perform the superposition!! (Einstein summation convention)
     @tullio x[i, j, m, n] := basis[i, j, m, k] * c[k, n] |> abs2
 
-    x, real_representation(c)
+    x, real_representation(c, PureState())
 end
 
-function generate_dataset(order, N_images::Integer, rs)
-    c = generate_coeficients(order, N_images)
-    generate_dataset(order, c, rs)
+function generate_dataset(order, N_images::Integer, rs, ::PureState)
+    c = sample_haar_vectors(order + 1, N_images)
+    generate_dataset(order, c, rs, PureState())
 end
+
+
+#Mixed state representations
+
+struct MixedState end
+
+function A(dim, j)
+    @assert dim > j "The dimension must be greater than the index."
+    D = zeros(Float32, dim)
+    for i ∈ 1:j
+        D[i] = 1
+    end
+    D[j+1] = -j
+    normalize!(D)
+    diagm(D)
+end
+
+function B(dim, j, k)
+    B = zeros(Float32, dim, dim)
+    B[j, k] = 1
+    B[k, j] = 1
+    hermitianpart!(B)
+    normalize!(B)
+    B
+end
+
+function C(dim, j, k)
+    C = zeros(ComplexF32, dim, dim)
+    C[j, k] = im
+    C[k, j] = -im
+    hermitianpart!(C)
+    normalize!(C)
+    C
+end
+
+function get_basis(dim)
+    As = stack(A(dim, j) for j ∈ 1:dim-1)
+    Bs = Array{Float32}(undef, dim, dim, dim * (dim - 1) ÷ 2)
+    Cs = Array{ComplexF32}(undef, dim, dim, dim * (dim - 1) ÷ 2)
+    for j ∈ 2:dim, k ∈ 1:j-1
+        Bs[:, :, (j-2)*(j-1)÷2+k] = B(dim, j, k)
+        Cs[:, :, (j-2)*(j-1)÷2+k] = C(dim, j, k)
+    end
+    cat(As, Bs, Cs, dims=3)
+end
+
+function real_representation(ρs, ::MixedState)
+    @assert size(ρs, 1) == size(ρs, 2) "The density matrices must be square."
+    dim = size(ρs, 1)
+    xs = Matrix{Float32}(undef, dim^2 - 1, size(ρs, 3))
+    basis = get_basis(dim)
+    for (ρ, x) ∈ zip(eachslice(ρs, dims=3), eachslice(xs, dims=2))
+        for (i, b) ∈ enumerate(eachslice(basis, dims=3))
+            x[i] = real(b ⋅ ρ)
+        end
+    end
+    xs
+end
+
+function complex_representation(xs, ::MixedState)
+    dim = Int(sqrt(size(xs, 1) + 1))
+    basis = get_basis(dim)
+
+    stack(I / dim + sum(c * b for (c, b) ∈ zip(x, eachslice(basis, dims=3))) for x ∈ eachslice(xs, dims=2))
+end
+
+function generate_dataset(order, ρs, rs, ::MixedState)
+    basis = get_basis(order, rs)
+
+    @tullio x[i, j, m, n] := basis[i, j, m, k] * conj(basis[i, j, m, l]) * ρs[k, l, n] |> real
+
+    x, real_representation(ρs, MixedState())
+end
+
+function generate_dataset(order, N_images::Integer, rs, ::MixedState)
+    ρs = sample_from_product_measure(order + 1, N_images)
+    generate_dataset(order, ρs, rs, MixedState())
+end
+
 
 #Photocounting
 
@@ -137,25 +216,38 @@ end
 ##
 order = 1
 rs = LinRange(-3.0f0, 3.0f0, 64)
-x, y = generate_dataset(order, 10, rs)
+x, y = generate_dataset(order, 10, rs, MixedState())
 
 add_noise!(x)
-heatmap(x[:, :, 1, 3])
+heatmap(x[:, :, 2, 10])
 
 sample_photons!(x, 2048)
-heatmap(x[:, :, 1, 3])
+heatmap(x[:, :, 2, 10])
 sum(x[:, :, :, 1])
 ##
 nobs = 2 .^ (6:11)
 
-file = h5open("TrainingData/photocount.h5", "cw")
-for n ∈ nobs
-    println(n)
-    x, y = generate_dataset(order, 10^5, rs)
+file = h5open("TrainingData/intense_mixed.h5", "cw")
+@showprogress for order ∈ 1:5
+    x, y = nothing, nothing
+    GC.gc()
+    R = 2.5f0 + 0.5f0 * order
+    rs = LinRange(-R, R, 64)
+    x, y = generate_dataset(order, 10^5, rs, MixedState())
     add_noise!(x)
-    sample_photons!(x, n)
+    #sample_photons!(x, n)
 
-    file["x_order$(order)_$n"] = x
-    file["y_order$(order)_$n"] = y
+    file["x_order$(order)"] = x
+    file["y_order$(order)"] = y
+end
+close(file)
+##
+using HDF5
+
+file = h5open("ExperimentalData/Intense/mixed.h5", "cw")
+for order ∈ 1:5
+    ρs = file["labels_order$(order)"][:, :, :]
+    ys = real_representation(ρs, MixedState())
+    file["ys_order$(order)"] = ys
 end
 close(file)

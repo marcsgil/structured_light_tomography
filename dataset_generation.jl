@@ -218,8 +218,9 @@ order = 1
 rs = LinRange(-3.0f0, 3.0f0, 64)
 x, y = generate_dataset(order, 10, rs, MixedState())
 
+#add_noise!(x, perlin_strength=0.05, elastic_scale=0.08)
 add_noise!(x)
-heatmap(x[:, :, 2, 10])
+heatmap(x[:, :, 1, 10])
 
 sample_photons!(x, 2048)
 heatmap(x[:, :, 2, 10])
@@ -228,7 +229,7 @@ sum(x[:, :, :, 1])
 nobs = 2 .^ (6:11)
 
 file = h5open("TrainingData/intense_mixed.h5", "cw")
-@showprogress for order ∈ 1:5
+@showprogress for order ∈ 2:5
     x, y = nothing, nothing
     GC.gc()
     R = 2.5f0 + 0.5f0 * order
@@ -245,7 +246,7 @@ close(file)
 using HDF5
 
 file = h5open("ExperimentalData/Intense/mixed.h5", "cw")
-for order ∈ 1:5
+for order ∈ 2:5
     ρs = file["labels_order$(order)"][:, :, :]
     ys = real_representation(ρs, MixedState())
     file["ys_order$(order)"] = ys

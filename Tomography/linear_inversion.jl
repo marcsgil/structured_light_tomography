@@ -48,9 +48,9 @@ function fidelity(ρ, σ)
     abs2(tr(sqrt(sqrt_ρ * σ * sqrt_ρ)))
 end
 ##
-L = 64
+L = 400
 order = 5
-file = h5open("ExperimentalData/mixed_dataset.h5")
+file = h5open("Data/ExperimentalData/Intense/mixed.h5")
 images = imresize(read(file["images_order$order"]), L, L)
 ρs = read(file["labels_order$order"])
 calibration = imresize(read(file["calibration"]), L, L)
@@ -102,7 +102,7 @@ probs = normalize(images[:, :, :, idx], 1)
 mean(abs2.(σ - ρs[:, :, idx]))
 ##
 L = 400
-file = h5open("ExperimentalData/mixed_dataset.h5")
+file = h5open("Data/ExperimentalData/Intense/mixed.h5")
 calibration = imresize(read(file["calibration"]), L, L)
 
 direct_x, direct_y, converted_x, converted_y, backgrounds = get_grid_and_bg(calibration)
@@ -131,3 +131,9 @@ close(file)
 ##
 fids
 mean(fids, dims=1)
+std(fids, dims=1)
+##
+file = h5open("Results/Intense/linear_inversion.h5", "cw")
+file["fids"] = mean(fids, dims=1) |> vec
+file["fids_std"] = std(fids, dims=1) |> vec
+close(file)

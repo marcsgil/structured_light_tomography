@@ -1,7 +1,6 @@
 /.vscode
 poetry.lock
-/ExperimentalData
 ./venv
 *__pycache__
-/runs
-/TrainingData
+*runs/
+/Data

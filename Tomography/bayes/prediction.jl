@@ -26,7 +26,7 @@ fids = file["fids"] |> read
 fids_std = file["fids_std"] |> read
 close(file)
 ##
-order = 3
+order = 2
 file = h5open("Data/ExperimentalData/Photocount/datasets.h5")
 histories = read(file["histories_order$order"])
 coefficients = read(file["coefficients_order$order"])
@@ -38,7 +38,7 @@ astig_operators = assemble_position_operators(converted_x, converted_y, order)
 astig_operators = unitary_transform(astig_operators, mode_converter)
 operators = compose_povm(direct_operators, astig_operators)
 
-method = MetropolisHastings()
+method = MetropolisHastings(; nsamples=10^4, nadapts=2 * 10^3, nchains=4)
 
 for n ∈ eachindex(photocounts)
     photocount = photocounts[n]
@@ -51,13 +51,15 @@ for n ∈ eachindex(photocounts)
     fids[n, order] = mean(this_fids)
     fids_std[n, order] = std(this_fids)
 end
+##
 
 fids
 fids_std
 
-lines(log2.(photocounts), fids[:, order], color=:blue, label="Machine learning")
+#lines(log2.(photocounts), fids[:, order], color=:blue, label="Machine learning")
 ##
-file = h5open("Results/Photocount/bayes.h5", "cw")
+file = h5open("Results/Photocount/bayes.h5", "w")
 file["fids"] = fids
 file["fids_std"] = fids_std
+file["photocounts"] = photocounts
 close(file)

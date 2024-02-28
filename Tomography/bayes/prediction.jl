@@ -22,11 +22,12 @@ converted_y = LinRange(converted_limits[2], converted_limits[4], L)
 photocounts = [2^k for k ∈ 6:11]
 
 file = h5open("Results/Photocount/bayes.h5")
+print("PREVIOUS FIDS")
 fids = file["fids"] |> read
 fids_std = file["fids_std"] |> read
 close(file)
 ##
-order = 2
+order = 3
 file = h5open("Data/ExperimentalData/Photocount/datasets.h5")
 histories = read(file["histories_order$order"])
 coefficients = read(file["coefficients_order$order"])

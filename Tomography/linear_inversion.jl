@@ -59,8 +59,6 @@ close(file)
 direct_x, direct_y, converted_x, converted_y, backgrounds = get_grid_and_bg(calibration)
 remove_background!(images, backgrounds)
 
-converted_y
-
 basis = build_basis(direct_x, direct_y, converted_x, converted_y, order, π / 6)
 @tullio theo_images[x, y, m, n] := basis[x, y, m, j] * conj(basis[x, y, m, k]) * ρs[k, j, n] |> real
 ##

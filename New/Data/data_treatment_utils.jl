@@ -1,4 +1,11 @@
-using Optim, Tullio, LinearAlgebra
+using Optim, Tullio, LinearAlgebra, StatsBase
+
+most_frequent_value(data) = countmap(data) |> argmax
+
+function remove_background!(images)
+    bg = most_frequent_value(images)
+    map!(x -> x < bg ? zero(x) : x - bg, images, images)
+end
 
 function loss(pars, gaussian)
     xmin = pars[1]

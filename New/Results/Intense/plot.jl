@@ -27,7 +27,7 @@ with_theme(theme) do
     errorbars!(ax, orders, fids_linear, fids_std_linear, color=:blue, whiskerwidth=10)
     errorbars!(ax, orders, fids_ml, fids_std_ml, color=:red, whiskerwidth=10)
 
-    axislegend(ax, position=:rt)
+    axislegend(ax, position=:lb)
     fig
     save("New/Plots/fidelities_mixed.pdf", fig)
 end

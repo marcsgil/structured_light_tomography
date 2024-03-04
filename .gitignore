@@ -3,4 +3,5 @@ poetry.lock
 ./venv
 *__pycache__
 *runs/
-/Data
+/Data/Raw
+Data/Processed

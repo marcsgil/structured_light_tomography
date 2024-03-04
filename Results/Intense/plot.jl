@@ -1,11 +1,11 @@
 using CairoMakie, HDF5
 
-file = h5open("Results/Intense/linear_inversion.h5")
+file = h5open("New/Results/Intense/linear_inversion.h5")
 fids_linear = read(file["fids"])
 fids_std_linear = read(file["fids_std"])
 close(file)
 
-file = h5open("Results/Intense/machine_learning.h5")
+file = h5open("New/Results/Intense/machine_learning.h5")
 fids_ml = read(file["fids"])
 fids_std_ml = read(file["fids_std"])
 close(file)
@@ -27,7 +27,7 @@ with_theme(theme) do
     errorbars!(ax, orders, fids_linear, fids_std_linear, color=:blue, whiskerwidth=10)
     errorbars!(ax, orders, fids_ml, fids_std_ml, color=:red, whiskerwidth=10)
 
-    axislegend(ax, position=:rt)
+    axislegend(ax, position=:lb)
     fig
-    save("Plots/fidelities_mixed.pdf", fig)
+    save("New/Plots/fidelities_mixed.pdf", fig)
 end

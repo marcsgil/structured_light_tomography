@@ -1,8 +1,7 @@
 using CairoMakie, HDF5
 
-file = h5open("Results/Photocount/bayes.h5")
+file = h5open("New/Results/Photocount/bayes.h5")
 fids_bayes = read(file["fids"])
-fids_std_bayes = read(file["fids_std"])
 close(file)
 
 file = h5open("Results/Photocount/machine_learning.h5")
@@ -44,5 +43,5 @@ with_theme(theme) do
     end
     axislegend(ax, position=:rb)
     fig
-    #save("Plots/fidelities_photocount.pdf", fig)
+    #save("New/Plots/fidelities_photocount.pdf", fig)
 end

@@ -5,3 +5,5 @@ poetry.lock
 *runs/
 /Data/Raw
 Data/Processed
+Data/Training
+Results/MachineLearningModels

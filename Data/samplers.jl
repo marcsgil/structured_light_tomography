@@ -14,7 +14,7 @@ function sample_haar_unitaries(dim, n_samples)
 end
 
 function sample_haar_vectors(dim, n_samples)
-    sample_haar_unitaries(n_samples, dim)[1, :, :]
+    sample_haar_unitaries(dim, n_samples)[1, :, :]
 end
 
 function sample_from_simplex(dim)

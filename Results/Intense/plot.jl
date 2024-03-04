@@ -1,11 +1,21 @@
 using CairoMakie, HDF5
 
-file = h5open("New/Results/Intense/linear_inversion.h5")
+includet("../../Data/representations.jl")
+
+file = h5open("Results/Intense/linear_inversion.h5")
 fids_linear = read(file["fids"])
 fids_std_linear = read(file["fids_std"])
 close(file)
 
-file = h5open("New/Results/Intense/machine_learning.h5")
+file = h5open("Results/Intense/machine_learning.h5")
+ρs = read(file["labels_order1"])
+σs = complex_representation(read(file["pred_labels_order1"]), MixedState())
+fids = map((ρ, σ) -> fidelity(ρ, σ), eachslice(ρs, dims=3), eachslice(σs, dims=3))
+mean(fids)
+
+ρs ≈ complex_representation(real_representation(ρs, MixedState()), MixedState())
+
+
 fids_ml = read(file["fids"])
 fids_std_ml = read(file["fids_std"])
 close(file)

@@ -13,9 +13,6 @@ file = h5open("Results/Intense/machine_learning.h5")
 fids = map((ρ, σ) -> fidelity(ρ, project2density(σ)), eachslice(ρs, dims=3), eachslice(σs, dims=3))
 mean(fids)
 ##
-ρs ≈ complex_representation(real_representation(ρs, MixedState()), MixedState())
-
-
 fids_ml = read(file["fids"])
 fids_std_ml = read(file["fids_std"])
 close(file)

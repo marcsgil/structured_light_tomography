@@ -1,6 +1,6 @@
 using CairoMakie, HDF5
 
-file = h5open("New/Results/Photocount/bayes.h5")
+file = h5open("Results/Photocount/bayes.h5")
 fids_bayes = read(file["fids"])
 close(file)
 
@@ -32,16 +32,17 @@ with_theme(theme) do
 
     ylims!(ax, 0.88, 1)
     color = [:red, :blue, :green, :black]
+    markers = [:circle, :diamond, :utriangle, :rect]
 
-    for (fid_ml, fid_bayes, color, order) ∈ zip(eachslice(fids_ml, dims=2), eachslice(fids_bayes, dims=2), color, 1:4)
-        lines!(ax, photocounts, fid_ml; color, label="Order $order")
+    for (fid_ml, fid_bayes, color, order, marker) ∈ zip(eachslice(fids_ml, dims=2), eachslice(fids_bayes, dims=2), color, 1:4, markers)
+        lines!(ax, photocounts, fid_ml; color)
         lines!(ax, photocounts, fid_bayes; color, linestyle=:dash)
-        scatter!(ax, photocounts, fid_ml,
-            marker=:diamond; color)
-        scatter!(ax, photocounts, fid_bayes,
-            marker=:circle; color)
+        scatter!(ax, photocounts, fid_ml;
+            marker, color, label="Order $order")
+        scatter!(ax, photocounts, fid_bayes;
+            marker, color)
     end
     axislegend(ax, position=:rb)
     fig
-    #save("New/Plots/fidelities_photocount.pdf", fig)
+    #save("Plots/fidelities_photocount.pdf", fig)
 end

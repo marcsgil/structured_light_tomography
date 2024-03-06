@@ -136,18 +136,20 @@ sum(images[:, :, :, 1])
 ##
 nobs = 2 .^ (6:11)
 
-file = h5open("Data/Training/intense_mixed_noiseless.h5", "cw")
-@showprogress for order ∈ 1
-    images, labels = nothing, nothing
-    GC.gc()
-    R = 2.5f0 + 0.5f0 * order
-    rs = LinRange(-R, R, 64)
-    images, labels = generate_dataset(order, 10^5, rs, π / 6, MixedState())
-    #add_noise!(images)
-    #sample_photons!(x, n)
+file = h5open("Data/Training/pure_photocount.h5", "cw")
+@showprogress for order ∈ 1:5
+    for n ∈ nobs
+        images, labels = nothing, nothing
+        GC.gc()
+        R = 2.5f0 + 0.5f0 * order
+        rs = LinRange(-R, R, 64)
+        images, labels = generate_dataset(order, 10^5, rs, π / 2, PureState())
+        add_noise!(images)
+        sample_photons!(images, n)
 
-    file["images_order$(order)"] = images
-    file["labels_order$(order)"] = labels
+        file["images_order$(order)/$(n)_photocounts"] = images
+        file["labels_order$(order)/$(n)_photocounts"] = labels
+    end
 end
 close(file)
 ##

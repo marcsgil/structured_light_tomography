@@ -8,16 +8,17 @@ fids_std_linear = read(file["fids_std"])
 close(file)
 ##
 file = h5open("Results/Intense/machine_learning.h5")
-ρs = read(file["labels_order1"])
-σs = complex_representation(read(file["pred_labels_order1"]), MixedState())
-fids = map((ρ, σ) -> fidelity(ρ, project2density(σ)), eachslice(ρs, dims=3), eachslice(σs, dims=3))
-mean(fids)
-##
-fids_ml = read(file["fids"])
-fids_std_ml = read(file["fids_std"])
-close(file)
-
 orders = 1:5
+fids_ml = zeros(length(orders))
+fids_std_ml = zeros(length(orders))
+for order ∈ orders
+    ρs = read(file["labels_order$order"])
+    σs = complex_representation(read(file["pred_labels_order$order"]), MixedState())
+    _fids = map((ρ, σ) -> fidelity(ρ, project2density(σ)), eachslice(ρs, dims=3), eachslice(σs, dims=3))
+    fids_ml[order] = mean(_fids)
+    fids_std_ml[order] = std(_fids)
+end
+fids_ml
 ##
 my_theme = Theme(
     fontsize=28,
@@ -36,5 +37,5 @@ with_theme(theme) do
 
     axislegend(ax, position=:lb)
     fig
-    save("New/Plots/fidelities_mixed.pdf", fig)
+    save("Plots/fidelities_mixed.pdf", fig)
 end

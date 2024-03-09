@@ -44,5 +44,5 @@ with_theme(theme) do
     end
     axislegend(ax, position=:rb)
     fig
-    #save("Plots/fidelities_photocount.pdf", fig)
+    save("Plots/fidelities_photocount.pdf", fig)
 end

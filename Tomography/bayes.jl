@@ -21,19 +21,19 @@ coefficients = read(file["labels_order$order"])
 basis = transverse_basis(order) |> reverse
 
 direct_operators = assemble_position_operators(direct_x, direct_y, basis)
-mode_converter = diagm([cis(k * π / 2) for k ∈ 0:order])
+mode_converter = diagm([cis(Float32(k * π / 2)) for k ∈ 0:order])
 astig_operators = assemble_position_operators(converted_x, converted_y, basis)
 unitary_transform!(astig_operators, mode_converter)
 operators = compose_povm(direct_operators, astig_operators)
 ##
-mthd = BayesianInference(operators, 10^5, 10^4)
+mthd = BayesianInference(operators, 10^6, 10^4)
 hermitian_basis = get_hermitian_basis(order + 1)
 photocount = 2048
 m = 1
 
 outcomes = history2dict(view(histories, 1:photocount, m))
 
-#@benchmark prediction($outcomes, $mthd)
+@benchmark prediction($outcomes, $mthd)
 
 xs = prediction(outcomes, mthd) |> mean
 ρ = linear_combination(xs, hermitian_basis)

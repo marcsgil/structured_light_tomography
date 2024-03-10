@@ -26,14 +26,14 @@ astig_operators = assemble_position_operators(converted_x, converted_y, basis)
 unitary_transform!(astig_operators, mode_converter)
 operators = compose_povm(direct_operators, astig_operators)
 ##
-mthd = BayesianInference(operators, 10^6, 10^3)
+mthd = BayesianInference(operators, 10^5, 10^4)
 hermitian_basis = get_hermitian_basis(order + 1)
 photocount = 2048
 m = 1
 
 outcomes = history2dict(view(histories, 1:photocount, m))
 
-@benchmark prediction($outcomes, $mthd)
+#@benchmark prediction($outcomes, $mthd)
 
 xs = prediction(outcomes, mthd) |> mean
 ρ = linear_combination(xs, hermitian_basis)
@@ -53,7 +53,7 @@ ancilla = similar(flat_outcomes, Float64)
 @benchmark BayesianTomography.log_likelihood($flat_outcomes, $povm, $x₀, $ancilla)
 
 ##
-orders = 1
+orders = 1:4
 photocounts = [2^k for k ∈ 6:11]
 all_fids = zeros(Float64, length(photocounts), 50, length(orders))
 
@@ -69,7 +69,7 @@ for k ∈ eachindex(orders)
     astig_operators = assemble_position_operators(converted_x, converted_y, basis)
     unitary_transform!(astig_operators, mode_converter)
     operators = compose_povm(direct_operators, astig_operators)
-    mthd = BayesianInference(operators, 10^6, 10^3)
+    mthd = BayesianInference(operators, 10^6, 10^4)
     hermitian_basis = get_hermitian_basis(order + 1)
 
     @showprogress for (n, m) ∈ Iterators.product(eachindex(photocounts), 1:50)

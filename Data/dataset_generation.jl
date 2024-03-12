@@ -1,6 +1,5 @@
-using CoherentNoise, Augmentor, ProgressMeter, Distributions,
-    Tullio, LinearAlgebra, Images,
-    Plots, HDF5, BayesianTomography
+using CoherentNoise, Augmentor, Distributions,
+    Tullio, LinearAlgebra, Images, HDF5, BayesianTomography
 
 includet("samplers.jl")
 includet("representations.jl")
@@ -121,44 +120,3 @@ function add_noise!(x; perlin_strength=0.3,
         end
     end
 end
-##
-order = 1
-rs = LinRange(-3.0f0, 3.0f0, 64)
-images, labels = generate_dataset(order, 10, rs, π / 2, PureState())
-
-#add_noise!(images, perlin_strength=0.0)
-add_noise!(images)
-heatmap(images[:, :, 1, 8])
-
-sample_photons!(images, 2048)
-heatmap(images[:, :, 2, 10])
-sum(images[:, :, :, 1])
-##
-nobs = 2 .^ (6:11)
-
-file = h5open("Data/Training/pure_photocount.h5", "cw")
-@showprogress for order ∈ 1:5
-    for n ∈ nobs
-        images, labels = nothing, nothing
-        GC.gc()
-        R = 2.5f0 + 0.5f0 * order
-        rs = LinRange(-R, R, 64)
-        images, labels = generate_dataset(order, 10^5, rs, π / 2, PureState())
-        add_noise!(images)
-        sample_photons!(images, n)
-
-        file["images_order$(order)/$(n)_photocounts"] = images
-        file["labels_order$(order)/$(n)_photocounts"] = labels
-    end
-end
-close(file)
-##
-using HDF5
-
-file = h5open("ExperimentalData/Intense/mixed.h5", "cw")
-for order ∈ 2:5
-    ρs = file["labels_order$(order)"][:, :, :]
-    ys = real_representation(ρs, MixedState())
-    file["ys_order$(order)"] = ys
-end
-close(file)

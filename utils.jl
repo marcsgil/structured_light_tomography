@@ -6,7 +6,7 @@ function hg(x, y, m, n)
 end
 
 function transverse_basis(order)
-    [(r, par) -> hg(r[1], r[2], n, order - n) for n ∈ 0:order]
+    [(r, par) -> hg(r[1], r[2], order - n, n) for n ∈ 0:order]
 end
 
 function transverse_basis(xd, yd, xc, yc, order, angle)
@@ -34,7 +34,7 @@ function label2image(c::AbstractVector, r, angle)
 end
 
 function label2image!(dest, ρ::AbstractMatrix, basis)
-    @tullio dest[i, j, k] = ρ[m, n] * conj(basis[i, j, k, m]) * basis[i, j, k, n] |> real
+    @tullio dest[i, j, k] = ρ[m, n] * basis[i, j, k, m] * conj(basis[i, j, k, n]) |> real
 end
 
 function label2image(ρ::AbstractMatrix, r, angle)

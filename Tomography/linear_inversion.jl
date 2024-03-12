@@ -23,7 +23,7 @@ for order ∈ orders
 
     direct_operators = assemble_position_operators(xd, yd, basis)
     converted_operators = assemble_position_operators(xc, yc, basis)
-    mode_converter = diagm([cis(k * π / 6) for k ∈ 0:order])
+    mode_converter = diagm([cis(-k * π / 6) for k ∈ 0:order])
     unitary_transform!(converted_operators, mode_converter)
     operators = compose_povm(direct_operators, converted_operators)
     mthd = LinearInversion(operators)

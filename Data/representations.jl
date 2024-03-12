@@ -17,23 +17,3 @@ function complex_representation(y, ::PureState)
 end
 
 struct MixedState end
-
-function real_representation(ρs, ::MixedState)
-    @assert size(ρs, 1) == size(ρs, 2) "The density matrices must be square."
-    dim = size(ρs, 1)
-    xs = Matrix{Float32}(undef, dim^2 - 1, size(ρs, 3))
-    basis = get_hermitian_basis(dim)
-    for (ρ, x) ∈ zip(eachslice(ρs, dims=3), eachslice(xs, dims=2))
-        for n ∈ 2:dim^2
-            x[n-1] = real(basis[n] ⋅ ρ)
-        end
-    end
-    xs
-end
-
-function complex_representation(xs, ::MixedState)
-    dim = Int(sqrt(size(xs, 1) + 1))
-    basis = get_hermitian_basis(dim)
-
-    stack(I / dim + sum(x[n] * basis[n+1] for n ∈ eachindex(x)) for x ∈ eachslice(xs, dims=2))
-end

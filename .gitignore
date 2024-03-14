@@ -7,3 +7,4 @@ poetry.lock
 Data/Processed
 Data/Training
 Results/MachineLearningModels
+*Manifest.toml

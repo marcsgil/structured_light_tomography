@@ -1,4 +1,4 @@
-using ClassicalOrthogonalPolynomials, Tullio, LinearAlgebra, Random, OnlineStats
+using PositionMeasurements, BayesianTomography, Random, Test, LinearAlgebra
 Random.seed!(1234)  # Set the seed for reproducibility
 
 @testset "Linear Inversion (Position Operators)" begin
@@ -13,21 +13,19 @@ Random.seed!(1234)  # Set the seed for reproducibility
         astig_operators = assemble_position_operators(rs, rs, basis)
         unitary_transform!(astig_operators, mode_converter)
         operators = compose_povm(direct_operators, astig_operators)
-        mthd1 = LinearInversion(operators)
-        mthd2 = BayesianInference(operators, 10^5, 10^3)
-        hermitian_basis = get_hermitian_basis(order + 1)
+        li = LinearInversion(operators)
+        bi = BayesianInference(operators, 10^5, 10^3)
 
         N = 5
         for n ∈ 1:N
-            X = randn(ComplexF64, order + 1, order + 1)
-            ρ = X * X' / tr(X * X')
-            images = label2image(ρ, rs, π / (order + 1))
-            @test fidelity(prediction(images, mthd1), ρ) ≥ 0.995
+            ρ = sample_ginibri_state(order + 1)
+            θ = π / (order + 1)
+            images = label2image(ρ, rs, θ)
+            @test fidelity(prediction(images, li), ρ) ≥ 0.995
 
             normalize!(images, 1)
             simulate_outcomes!(images, 2^15)
-            outcomes = array2dict(images)
-            σ = linear_combination(mean(prediction(outcomes, mthd2)), hermitian_basis)
+            σ, _ = prediction(images, bi)
             @test fidelity(σ, ρ) ≥ 0.99
         end
     end

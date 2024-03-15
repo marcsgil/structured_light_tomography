@@ -30,7 +30,7 @@ function generate_dataset(ψs, rs, angle, ::PureState)
 end
 
 function generate_dataset(order, N_images, rs, angle, ::PureState)
-    ψs = sample_haar_vectors(order + 1, N_images)
+    ψs = BayesianTomography.sample(HaarVector(order + 1), N_images)
     generate_dataset(ψs, rs, angle, PureState())
 end
 
@@ -78,12 +78,9 @@ function sample_photons!(images, N_photons, direct_prob=0.5)
     images[:, :, 1, :] .*= direct_prob
     images[:, :, 2, :] .*= 1 - direct_prob
 
-    p = Progress(size(images, 4))
     Threads.@threads for image in eachslice(images, dims=4)
         simulate_outcomes!(image, N_photons)
-        next!(p)
     end
-    finish!(p)
 end
 
 #Noise

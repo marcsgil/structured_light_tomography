@@ -44,40 +44,39 @@ with h5py.File('Data/Processed/mixed_intense.h5') as f:
     converted_lims = f['converted_lims'][:]
     images = f['images_order1'][:]
 
-order = 4
+for order in range(1,6):
+    with h5py.File('Data/Processed/mixed_intense.h5') as f:
+        direct_lims = f['direct_lims'][:]
+        converted_lims = f['converted_lims'][:]
 
-with h5py.File('Data/Processed/mixed_intense.h5') as f:
-    direct_lims = f['direct_lims'][:]
-    converted_lims = f['converted_lims'][:]
+        R = 2.6 + 0.6*order
+        upper_d,lower_d,left_d,right_d = crop_indices(400,400, *direct_lims, -R,R,-R,R)
+        upper_c,lower_c,left_c,right_c = crop_indices(400,400, *converted_lims, -R,R,-R,R)
 
-    R = 2.6 + 0.6*order
-    upper_d,lower_d,left_d,right_d = crop_indices(400,400, *direct_lims, -R,R,-R,R)
-    upper_c,lower_c,left_c,right_c = crop_indices(400,400, *converted_lims, -R,R,-R,R)
+        transform = v2.Compose([
+            torch.from_numpy,
+            v2.Resize((64, 64))])
 
-    transform = v2.Compose([
-        torch.from_numpy,
-        v2.Resize((64, 64))])
-
-    direct = transform(f[f'images_order{order}'][:,0,upper_d:lower_d,left_d:right_d]).float()
-    converted = transform(f[f'images_order{order}'][:,1,upper_c:lower_c,left_c:right_c]).float()
-            
-    def normalize(x):
-        mean = [x[:, n, :, :].mean() for n in range(x.shape[1])]
-        std = [x[:, n, :, :].std() for n in range(x.shape[1])]
-        return v2.Normalize(mean=mean, std=std)(x)
+        direct = transform(f[f'images_order{order}'][:,0,upper_d:lower_d,left_d:right_d]).float()
+        converted = transform(f[f'images_order{order}'][:,1,upper_c:lower_c,left_c:right_c]).float()
+                
+        def normalize(x):
+            mean = [x[:, n, :, :].mean() for n in range(x.shape[1])]
+            std = [x[:, n, :, :].std() for n in range(x.shape[1])]
+            return v2.Normalize(mean=mean, std=std)(x)
 
 
-    images_exp = normalize(torch.stack((direct,converted),1)).to(device)
-    labels_exp = f[f'labels_order{order}'][:]
-                     
+        images_exp = normalize(torch.stack((direct,converted),1)).to(device)
+        labels_exp = f[f'labels_order{order}'][:]
+                        
 
-model = torch.load(f"Results/MachineLearningModels/Intense/ModelSeach/DefaultConvNet/Mixed_Order{order}/checkpoint.pt").to(device)
+    model = torch.load(f"Results/MachineLearningModels/Intense/Order{order}/checkpoint.pt").to(device)
 
-with torch.no_grad():
-    labels_pred = model(images_exp).cpu().numpy()
+    with torch.no_grad():
+        labels_pred = model(images_exp).cpu().numpy()
 
-sigmas = jl.complex_representation(labels_pred)
+    sigmas = jl.complex_representation(labels_pred)
 
-fidelities = np.array([jl.fidelity(sigmas[n,:,:], labels_exp[n,:,:]) for n in range(100)])
+    fidelities = np.array([jl.fidelity(sigmas[n,:,:], labels_exp[n,:,:]) for n in range(100)])
 
-print(fidelities.mean(), fidelities.std())
+    print(fidelities.mean(), fidelities.std())

@@ -1,6 +1,6 @@
 /.vscode
 poetry.lock
-./venv
+/.venv
 *__pycache__
 *runs/
 /Data/Raw

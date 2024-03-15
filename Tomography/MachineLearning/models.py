@@ -98,6 +98,9 @@ class ConvNet(nn.Module):
         result = torch.flatten(result, 1)
         result = self.fully_connected_layers(result)
         return result
+    
+def DefaultConvNet(H,W,n_channels,n_classes):
+    return ConvNet(H,W,n_channels, n_classes,[24,40,35],5,nn.ELU,[120,80,40])
 
 
 def my_convnext_tiny(*args, **kwargs):
@@ -163,3 +166,46 @@ class ResNet9(nn.Module):
         out = self.res2(out) + out
         out = self.classifier(out)
         return out
+    
+def ResNet18(num_classes):
+    model = torchvision.models.resnet18(weights=None, num_classes=num_classes)
+
+    # Modify the first convolution layer to accept 2-channel images
+    model.conv1 = torch.nn.Conv2d(2, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+
+    return model
+
+def ResNet34(num_classes):
+    model = torchvision.models.resnet34(weights=None, num_classes=num_classes)
+
+    # Modify the first convolution layer to accept 2-channel images
+    model.conv1 = torch.nn.Conv2d(2, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+
+    return model
+
+def ResNet50(num_classes):
+    model = torchvision.models.resnet50(weights=None, num_classes=num_classes)
+
+    # Modify the first convolution layer to accept 2-channel images
+    model.conv1 = torch.nn.Conv2d(2, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+
+    return model
+    
+def MobileNet(num_classes):
+    model = torchvision.models.mobilenet_v3_small(weights=None, num_classes=num_classes)
+
+    # Modify the first convolutional layer to accept 2 input channels
+    model.features[0][0] = torch.nn.Conv2d(2, model.features[0][0].out_channels, 
+                                        kernel_size=model.features[0][0].kernel_size, 
+                                        stride=model.features[0][0].stride, 
+                                        padding=model.features[0][0].padding, 
+                                        bias=model.features[0][0].bias is not None)
+    
+    return model
+
+def EfficientNetB0(num_classes):
+    efficientnet = torch.hub.load('NVIDIA/DeepLearningExamples:torchhub', 
+                                  'nvidia_efficientnet_b0', pretrained=False,trust_repo=True)
+    efficientnet.stem.conv = torch.nn.Conv2d(2, 32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False)
+    efficientnet.classifier.fc = torch.nn.Linear(in_features=1280, out_features=num_classes, bias=True)
+    return efficientnet

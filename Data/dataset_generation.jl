@@ -1,27 +1,57 @@
 using CoherentNoise, Augmentor, Distributions,
-    Tullio, LinearAlgebra, Images, HDF5, BayesianTomography
+    Tullio, LinearAlgebra, Images, HDF5, BayesianTomography, PositionMeasurements
 
-includet("samplers.jl")
-includet("representations.jl")
-includet("../utils.jl")
+struct PureState end
 
-#Pure state representations
+function real_representation(ψs, ::PureState)
+    #Represents the coeficients ψ as a real array.
+    #We stack the real and then the imaginary part.
+    D = size(ψs, 1)
+    result = Array{real(eltype(ψs))}(undef, 2D, size(ψs, 2))
+    result[1:D, :] = real.(@view ψs[1:end, :])
+    result[D+1:2D, :] = imag.(@view ψs[1:end, :])
+    result
+end
 
-function generate_dataset(c, rs, angle, ::PureState)
-    basis = transverse_basis(rs, rs, rs, rs, size(c, 1) - 1, angle)
+function complex_representation(y, ::PureState)
+    @. @views y[1:end÷2, :] + im * y[end÷2+1:end, :]
+end
 
-    x = Array{Float32}(undef, length(rs), length(rs), 2, size(c, 2))
+function generate_dataset(ψs, rs, angle, ::PureState)
+    basis = transverse_basis(rs, rs, rs, rs, size(ψs, 1) - 1, angle)
 
-    Threads.@threads for k ∈ axes(c, 2)
-        label2image!(view(x, :, :, :, k), view(c, :, k), basis)
+    x = Array{Float32}(undef, length(rs), length(rs), 2, size(ψs, 2))
+
+    Threads.@threads for k ∈ axes(ψs, 2)
+        label2image!(view(x, :, :, :, k), view(ψs, :, k), basis)
     end
 
-    x, real_representation(c, PureState())
+    x, real_representation(ψs, PureState())
 end
 
 function generate_dataset(order, N_images, rs, angle, ::PureState)
-    c = sample_haar_vectors(order + 1, N_images)
-    generate_dataset(c, rs, angle, PureState())
+    ψs = sample_haar_vectors(order + 1, N_images)
+    generate_dataset(ψs, rs, angle, PureState())
+end
+
+struct MixedState end
+
+function real_representation(ρs, ::MixedState)
+    basis = gell_man_matrices(size(ρs, 1), include_identity=false)
+    stack(ρ -> real_orthogonal_projection(ρ, basis), eachslice(ρs, dims=3), dims=2)
+end
+
+function complex_representation(xs, ::MixedState)
+    d = Int(√(size(xs, 1) + 1))
+    inv_d = 1 / d
+    basis = gell_man_matrices(d, include_identity=false)
+    ρs = stack(ρ -> linear_combination(ρ, basis), eachslice(xs, dims=2))
+    Threads.@threads for n ∈ axes(ρs, 3)
+        for m ∈ axes(ρs, 1)
+            ρs[m, m, n] += inv_d
+        end
+    end
+    ρs
 end
 
 function generate_dataset(ρs, rs, angle, ::MixedState)
@@ -37,7 +67,7 @@ function generate_dataset(ρs, rs, angle, ::MixedState)
 end
 
 function generate_dataset(order, N_images, rs, angle, ::MixedState)
-    ρs = sample_from_product_measure(order + 1, N_images)
+    ρs = BayesianTomography.sample(ProductMeasure(order + 1), N_images)
     generate_dataset(ρs, rs, angle, MixedState())
 end
 

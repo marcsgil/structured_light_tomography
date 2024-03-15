@@ -1,7 +1,6 @@
-using HDF5, CairoMakie, StatsBase, BayesianTomography, ProgressMeter
+using HDF5, StatsBase, BayesianTomography, PositionMeasurements, ProgressMeter
 
 includet("../Data/data_treatment_utils.jl")
-includet("../utils.jl")
 
 input = h5open("Data/Processed/mixed_intense.h5")
 
@@ -13,10 +12,9 @@ xc, yc = get_grid(converted_lims, (400, 400))
 weights = read(input["weights"])
 ##
 orders = 1:5
-fids = Vector{Float64}(undef, length(orders))
-fids_std = Vector{Float64}(undef, length(orders))
+fids = Matrix{Float64}(undef, length(orders), 100)
 
-for order ∈ orders
+@showprogress for (m, order) ∈ enumerate(orders)
     images = read(input["images_order$order"])
     ρs = read(input["labels_order$order"])
     basis = transverse_basis(order)
@@ -28,19 +26,13 @@ for order ∈ orders
     operators = compose_povm(direct_operators, converted_operators)
     mthd = LinearInversion(operators)
 
-    this_fids = Vector{Float64}(undef, size(images, 4))
-
-    Threads.@threads for n ∈ eachindex(this_fids)
-        probs = view(images, :, :, :, n)
+    for (n, probs) ∈ enumerate(eachslice(images, dims=4))
         σ = prediction(probs, mthd)
-        this_fids[n] = fidelity(ρs[:, :, n], σ)
+        fids[m, n] = fidelity(ρs[:, :, n], σ)
     end
-
-    fids[order] = mean(this_fids)
-    fids_std[order] = std(this_fids)
 end
 
-fids
+dropdims(mean(fids, dims=2), dims=2)
 ##
 out = h5open("New/Results/Intense/linear_inversion.h5", "w")
 out["fids"] = fids

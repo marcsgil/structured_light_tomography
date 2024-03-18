@@ -13,7 +13,33 @@ out = h5open("Results/Photocount/bayes.h5")
 fids = read(out["fids"])
 close(out)
 ##
-orders = 1
+order = 4
+
+histories = file["histories_order$order"] |> read
+coefficients = read(file["labels_order$order"])
+
+basis = transverse_basis(order)
+
+direct_operators = assemble_position_operators(direct_x, direct_y, basis)
+mode_converter = diagm([cis(Float32(k * π / 2)) for k ∈ 0:order])
+astig_operators = assemble_position_operators(converted_x, converted_y, basis)
+unitary_transform!(astig_operators, mode_converter)
+operators = compose_povm(direct_operators, astig_operators)
+##
+mthd = BayesianInference(operators, 10^4, 10^3, 1e-4)
+
+m = 2
+n = 6
+photocounts = [2^k for k ∈ 6:11]
+
+outcomes = complete_representation(History(view(histories, 1:photocounts[n], m)), (64, 64, 2))
+ρ, Σ = prediction(outcomes, mthd; verbose=true)
+@b prediction($outcomes, $mthd)
+ψ = project2pure(ρ)
+
+abs2(coefficients[:, m] ⋅ ψ)
+##
+orders = 4
 photocounts = [2^k for k ∈ 6:11]
 all_fids = zeros(Float64, length(photocounts), 50, length(orders))
 
@@ -29,19 +55,22 @@ for (k, order) ∈ enumerate(orders)
     astig_operators = assemble_position_operators(converted_x, converted_y, basis)
     unitary_transform!(astig_operators, mode_converter)
     operators = compose_povm(direct_operators, astig_operators)
-    mthd = BayesianInference(operators, 10^6, 10^4)
+    mthd = BayesianInference(operators, 10^4, 10^3, 1e-4)
 
-    for (n, m) ∈ Iterators.product(eachindex(photocounts), 1:50)
-        outcomes = complete_representation(History(view(histories, 1:photocounts[n], m)), (64, 64, 2))
-        ρ, Σ = prediction(outcomes, mthd)
-        ψ = project2pure(ρ)
+    Threads.@threads for m ∈ 1:50
+        for n ∈ eachindex(photocounts)
+            outcomes = complete_representation(History(view(histories, 1:photocounts[n], m)), (64, 64, 2))
+            ρ, Σ = prediction(outcomes, mthd)
+            ψ = project2pure(ρ)
 
-        all_fids[n, m, k] = abs2(coefficients[:, m] ⋅ ψ)
-        next!(p)
+            all_fids[n, m, k] = abs2(coefficients[:, m] ⋅ ψ)
+            next!(p)
+        end
     end
 end
 
 fids = dropdims(mean(all_fids, dims=2), dims=2)
+#fids - read(out["fids"])
 ##
 out = h5open("Results/Photocount/bayes.h5", "cw")
 out["fids"] = fids

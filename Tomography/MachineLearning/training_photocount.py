@@ -12,7 +12,7 @@ from torch.utils.data import random_split
 device = ("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using {device} device")
 
-BATCH_SIZE = 64
+BATCH_SIZE = 256
 
 def format_data(x):
     mean = [x[:, n, :, :].mean() for n in range(x.shape[1])]
@@ -25,9 +25,10 @@ def format_data(x):
         ])(x).to(device)
     return X
 
-for order in range(1,5):
-     for pc in [2**k for k in range(6,12)]:
+for order in [3,4]:
+     for pc in [2**k for k in range(11,12)]:
         model = models.DefaultConvNet(64,64,2, 2 * (order + 1)).to(device)
+        #model = models.MobileNet(2 * (order + 1)).to(device)
 
         with h5py.File('Data/Training/pure_photocount.h5', 'r') as f:
             images = format_data(f[f'images_order{order}/{pc}_photocounts'][:])
@@ -45,7 +46,7 @@ for order in range(1,5):
             loss_fn = training.fidelity_loss
             optimizer = torch.optim.Adam(model.parameters(), amsgrad=True)
 
-            save_path = f"Results/MachineLearningModels/Photocount/Order{order}/{pc}_photocounts"
+            save_path = f"Results/MachineLearningModels/Batch5/Photocount/Order{order}/{pc}_photocounts"
 
             writer = SummaryWriter(save_path)
             early_stopping = training.EarlyStopping(patience=40,save_path=save_path)

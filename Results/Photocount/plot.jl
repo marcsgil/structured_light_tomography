@@ -1,10 +1,10 @@
 using CairoMakie, HDF5
 
-file = h5open("Results/Photocount/bayes.h5")
+file = h5open("Results/Photocount/New/bayes.h5")
 fids_bayes = read(file["fids"])
 close(file)
 
-file = h5open("Results/Photocount/machine_learning.h5")
+file = h5open("Results/Photocount/New/machine_learning.h5")
 fids_ml = read(file["fids"])
 fids_std_ml = read(file["fids_std"])
 close(file)
@@ -17,20 +17,18 @@ my_theme = Theme(
     linewidth=3)
 theme = merge(my_theme, theme_latexfonts())
 
-order = 2
-
 fids_ml
 
 with_theme(theme) do
-    fig = Figure(resolution=(800, 600))
+    fig = Figure(size=(800, 600))
     ax = Axis(fig[1, 1],
         xlabel="Photocounts",
         ylabel="Mean Fidelity",
-        yticks=0.88:0.01:1,
+        yticks=0.90:0.01:1,
         xticks=photocounts,
         xscale=log2)
 
-    ylims!(ax, 0.88, 1)
+    ylims!(ax, 0.90, 1)
     color = [:red, :blue, :green, :black]
     markers = [:circle, :diamond, :utriangle, :rect]
 
@@ -44,5 +42,5 @@ with_theme(theme) do
     end
     axislegend(ax, position=:rb)
     fig
-    save("Plots/fidelities_photocount.pdf", fig)
+    #save("Plots/fidelities_photocount.pdf", fig)
 end

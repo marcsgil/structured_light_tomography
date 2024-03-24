@@ -24,22 +24,22 @@ direct_operators = assemble_position_operators(direct_x, direct_y, basis)
 mode_converter = diagm([cis(Float32(k * π / 2)) for k ∈ 0:order])
 astig_operators = assemble_position_operators(converted_x, converted_y, basis)
 unitary_transform!(astig_operators, mode_converter)
-operators = compose_povm(direct_operators, astig_operators)
+operators = compose_povm(direct_operators, astig_operators);
 ##
-mthd = BayesianInference(operators, 10^4, 10^3, 1e-4)
+mthd = BayesianInference(operators)
 
-m = 2
+m = 1
 n = 6
 photocounts = [2^k for k ∈ 6:11]
 
 outcomes = complete_representation(History(view(histories, 1:photocounts[n], m)), (64, 64, 2))
 ρ, Σ = prediction(outcomes, mthd; verbose=true)
-@b prediction($outcomes, $mthd)
+#@b prediction($outcomes, $mthd)
 ψ = project2pure(ρ)
 
 abs2(coefficients[:, m] ⋅ ψ)
 ##
-orders = 4
+orders = 1:4
 photocounts = [2^k for k ∈ 6:11]
 all_fids = zeros(Float64, length(photocounts), 50, length(orders))
 
@@ -55,9 +55,9 @@ for (k, order) ∈ enumerate(orders)
     astig_operators = assemble_position_operators(converted_x, converted_y, basis)
     unitary_transform!(astig_operators, mode_converter)
     operators = compose_povm(direct_operators, astig_operators)
-    mthd = BayesianInference(operators, 10^4, 10^3, 1e-4)
+    mthd = BayesianInference(operators)
 
-    Threads.@threads for m ∈ 1:50
+    for m ∈ 1:50
         for n ∈ eachindex(photocounts)
             outcomes = complete_representation(History(view(histories, 1:photocounts[n], m)), (64, 64, 2))
             ρ, Σ = prediction(outcomes, mthd)
@@ -72,7 +72,7 @@ end
 fids = dropdims(mean(all_fids, dims=2), dims=2)
 #fids - read(out["fids"])
 ##
-out = h5open("Results/Photocount/bayes.h5", "cw")
+out = h5open("Results/Photocount/New/bayes.h5", "cw")
 out["fids"] = fids
 out["photocounts"] = photocounts
 close(out)

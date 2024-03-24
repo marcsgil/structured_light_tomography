@@ -35,6 +35,6 @@ end
 dropdims(mean(fids, dims=2), dims=2)
 ##
 out = h5open("New/Results/Intense/linear_inversion.h5", "w")
-out["fids"] = fids
-out["fids_std"] = fids_std
+out["fids"] = dropdims(mean(fids, dims=2), dims=2)
+out["fids_std"] = dropdims(std(fids, dims=2), dims=2)
 close(out)

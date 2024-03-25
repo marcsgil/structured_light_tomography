@@ -1,16 +1,14 @@
-using CairoMakie, HDF5, BayesianTomography
+using CairoMakie, HDF5
 
 file = h5open("Results/Intense/linear_inversion.h5")
 fids_linear = read(file["fids"])
-fids_std_linear = read(file["fids_std"])
 close(file)
 ##
-file = h5open("Results/Intense/New/machine_learning.h5")
-orders = 1:5
+file = h5open("Results/Intense/machine_learning.h5")
 fids_ml = read(file["fids"])
-fids_std_ml = read(file["fids_std"])
-fids_ml
+close(file)
 ##
+orders = 1:5
 my_theme = Theme(
     fontsize=28,
     markersize=28,
@@ -24,9 +22,6 @@ with_theme(theme) do
 
     scatter!(ax, orders, fids_linear, color=:blue, label="Linear inversion")
     scatter!(ax, orders, fids_ml, color=:red, label="Machine learning", marker=:diamond)
-
-    #errorbars!(ax, orders, fids_linear, fids_std_linear, color=:blue, whiskerwidth=10)
-    #errorbars!(ax, orders, fids_ml, fids_std_ml, color=:red, whiskerwidth=10)
 
     axislegend(ax, position=:lb)
     fig

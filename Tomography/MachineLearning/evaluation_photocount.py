@@ -22,7 +22,6 @@ def format_data(x):
 
 fidelities = np.zeros((4,6,50))
 
-T0 = time.time()
 for (k, order) in enumerate(range(1,5)):
     with h5py.File('Data/Processed/pure_photocount.h5') as f:
         images = format_data(f[f'images_order{order}/2048_photocounts'][:].astype(np.float32))
@@ -32,23 +31,15 @@ for (k, order) in enumerate(range(1,5)):
                         
     
     for (j,pc) in enumerate([2**k for k in range(6,12)]):
-        model = torch.load(f"Results/MachineLearningModels/Batch5/Photocount/Order{order}/{pc}_photocounts/checkpoint.pt").to(device)
+        model = torch.load(f"Results/MachineLearningModels/Photocount/Order{order}/{pc}_photocounts/checkpoint.pt").to(device)
 
         with torch.no_grad():
             labels_pred = model(images)
 
         fidelities[k,j] = fidelity(labels_pred, labels).cpu().numpy()
 
-    t0 = time.time()
-    model(images[:0])
-    t1 = time.time()
-
-    print(f"Time for one image: {t1-t0}")
-
-T1 = time.time()
-print(f"Total time: {T1-T0}")
         
 
-"""with h5py.File('Results/Photocount/New/machine_learning.h5', 'w') as f:
+with h5py.File('Results/Photocount/machine_learning.h5', 'w-') as f:
     f["fids"] = fidelities.mean(axis=2)
-    f["fids_std"] = fidelities.std(axis=2)"""
+    f["fids_std"] = fidelities.std(axis=2)

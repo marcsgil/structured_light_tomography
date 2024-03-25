@@ -1,12 +1,11 @@
 using CairoMakie, HDF5
 
-file = h5open("Results/Photocount/New/bayes.h5")
+file = h5open("Results/Photocount/bayes.h5")
 fids_bayes = read(file["fids"])
 close(file)
 
-file = h5open("Results/Photocount/New/machine_learning.h5")
+file = h5open("Results/Photocount/machine_learning.h5")
 fids_ml = read(file["fids"])
-fids_std_ml = read(file["fids_std"])
 close(file)
 
 photocounts = [2^k for k ∈ 6:11]

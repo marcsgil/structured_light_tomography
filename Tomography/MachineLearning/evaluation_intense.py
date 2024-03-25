@@ -1,4 +1,3 @@
-from juliacall import Main as jl
 import h5py
 import torch
 import models
@@ -103,6 +102,6 @@ for (k, order) in enumerate(range(1,6)):
 print(fidelities.mean(axis=1))
 print(fidelities.std(axis=1))
 
-with h5py.File('Results/Intense/New/machine_learning.h5', 'w-') as f:
+with h5py.File('Results/Intense/machine_learning.h5', 'w-') as f:
     f["fids"] = fidelities.mean(axis=1)
     f["fids_std"] = fidelities.std(axis=1)

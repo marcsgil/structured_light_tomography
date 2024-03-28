@@ -13,7 +13,7 @@ out = h5open("Results/Photocount/bayes.h5")
 fids = read(out["fids"])
 close(out)
 ##
-order = 4
+order = 3
 
 histories = file["histories_order$order"] |> read
 coefficients = read(file["labels_order$order"])

@@ -8,12 +8,8 @@ direct_lims = read(file["direct_lims"])
 converted_lims = read(file["converted_lims"])
 direct_x, direct_y = get_grid(direct_lims, (64, 64))
 converted_x, converted_y = get_grid(converted_lims, (64, 64))
-
-out = h5open("Results/Photocount/bayes.h5")
-fids = read(out["fids"])
-close(out)
 ##
-order = 3
+order = 1
 
 histories = file["histories_order$order"] |> read
 coefficients = read(file["labels_order$order"])
@@ -25,19 +21,6 @@ mode_converter = diagm([cis(Float32(k * π / 2)) for k ∈ 0:order])
 astig_operators = assemble_position_operators(converted_x, converted_y, basis)
 unitary_transform!(astig_operators, mode_converter)
 operators = compose_povm(direct_operators, astig_operators);
-##
-mthd = BayesianInference(operators)
-
-m = 1
-n = 6
-photocounts = [2^k for k ∈ 6:11]
-
-outcomes = complete_representation(History(view(histories, 1:photocounts[n], m)), (64, 64, 2))
-ρ, Σ = prediction(outcomes, mthd; verbose=true)
-#@b prediction($outcomes, $mthd)
-ψ = project2pure(ρ)
-
-abs2(coefficients[:, m] ⋅ ψ)
 ##
 orders = 1:4
 photocounts = [2^k for k ∈ 6:11]
@@ -70,9 +53,8 @@ for (k, order) ∈ enumerate(orders)
 end
 
 fids = dropdims(mean(all_fids, dims=2), dims=2)
-#fids - read(out["fids"])
 ##
-out = h5open("Results/Photocount/New/bayes.h5", "cw")
+out = h5open("Results/Photocount/bayes.h5", "cw")
 out["fids"] = fids
 out["photocounts"] = photocounts
 close(out)

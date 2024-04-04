@@ -43,7 +43,7 @@ for (k, order) ∈ enumerate(orders)
     for m ∈ 1:50
         for n ∈ eachindex(photocounts)
             outcomes = complete_representation(History(view(histories, 1:photocounts[n], m)), (64, 64, 2))
-            ρ, Σ = prediction(outcomes, mthd)
+            ρ, _ = prediction(outcomes, mthd)
             ψ = project2pure(ρ)
 
             all_fids[n, m, k] = abs2(coefficients[:, m] ⋅ ψ)

@@ -149,9 +149,9 @@ uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
 [[deps.BayesianTomography]]
 deps = ["Distributions", "LinearAlgebra", "OnlineStats", "PrecompileTools", "Random", "StatsBase", "Tullio"]
-path = "../BayesianTomography.jl"
+git-tree-sha1 = "4add6ce4dbe88f1a085b0aa03af50ec1e4812fce"
 uuid = "ae1f9aa5-51e1-43df-aa72-b1a458b33a1f"
-version = "0.1.0"
+version = "0.1.1"
 
 [[deps.BlockArrays]]
 deps = ["ArrayLayouts", "FillArrays", "LinearAlgebra"]
@@ -255,9 +255,9 @@ version = "3.24.0"
 
 [[deps.ColorTypes]]
 deps = ["FixedPointNumbers", "Random"]
-git-tree-sha1 = "eb7f0f8307f71fac7c606984ea5fb2817275d6e4"
+git-tree-sha1 = "b10d0b65641d57b8b4d5e234446582de5047050d"
 uuid = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
-version = "0.11.4"
+version = "0.11.5"
 
 [[deps.ColorVectorSpace]]
 deps = ["ColorTypes", "FixedPointNumbers", "LinearAlgebra", "SpecialFunctions", "Statistics", "TensorCore"]
@@ -635,9 +635,9 @@ version = "2.13.1+0"
 
 [[deps.FreeTypeAbstraction]]
 deps = ["ColorVectorSpace", "Colors", "FreeType", "GeometryBasics"]
-git-tree-sha1 = "055626e1a35f6771fe99060e835b72ca61a52621"
+git-tree-sha1 = "2493cdfd0740015955a8e46de4ef28f49460d8bc"
 uuid = "663a7486-cb36-511b-a19d-713bb74d65c9"
-version = "0.10.1"
+version = "0.10.3"
 
 [[deps.FriBidi_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -738,9 +738,9 @@ version = "1.6.0"
 
 [[deps.HDF5]]
 deps = ["Compat", "HDF5_jll", "Libdl", "MPIPreferences", "Mmap", "Preferences", "Printf", "Random", "Requires", "UUIDs"]
-git-tree-sha1 = "26407bd1c60129062cec9da63dc7d08251544d53"
+git-tree-sha1 = "e856eef26cf5bf2b0f95f8f4fc37553c72c8641c"
 uuid = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
-version = "0.17.1"
+version = "0.17.2"
 
     [deps.HDF5.extensions]
     MPIExt = "MPI"
@@ -1555,7 +1555,7 @@ version = "1.4.3"
 
 [[deps.PositionMeasurements]]
 deps = ["ClassicalOrthogonalPolynomials", "Integrals", "PrecompileTools", "Tullio"]
-git-tree-sha1 = "436ad87b5258e77f947b7008a96389fa108d9582"
+git-tree-sha1 = "b1c35ea30d68f4932a87fd45c8fe564aee8dd497"
 repo-rev = "main"
 repo-url = "https://github.com/marcsgil/PositionMeasurements.jl.git"
 uuid = "4f50160c-5eac-4c4e-9f5f-045f60a7a294"

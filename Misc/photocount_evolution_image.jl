@@ -1,6 +1,4 @@
-using HDF5, CairoMakie, BayesianTomography, Tullio
-
-includet("../utils.jl")
+using HDF5, CairoMakie, BayesianTomography, Tullio, PositionMeasurements
 
 order = 1
 file = h5open("Data/Processed/pure_photocount.h5")

@@ -2,7 +2,7 @@
 
 julia_version = "1.10.4"
 manifest_format = "2.0"
-project_hash = "8b6764806cd747ff3052fd2fa036b5079c9b6485"
+project_hash = "9d18c6bbd62b9bc5a10a33df3d4ad5b3e78ed844"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "7a6b285f217ba92b5b474b783b4c2e8cf8218aaa"
@@ -1611,6 +1611,12 @@ deps = ["Dates", "PrecompileTools", "UUIDs"]
 git-tree-sha1 = "8489905bcdbcfac64d1daa51ca07c0d8f0283821"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
 version = "2.8.1"
+
+[[deps.PartiallyCoherentSources]]
+deps = ["KernelAbstractions", "Random"]
+path = "/home/marcsgil/Desktop/PartiallyCoherentSources.jl"
+uuid = "e115ffff-c837-44d2-bea1-e4dd11c169a6"
+version = "0.1.0"
 
 [[deps.Pidfile]]
 deps = ["FileWatching", "Test"]

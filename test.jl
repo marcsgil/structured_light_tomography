@@ -1,11 +1,21 @@
-using SLMControl, CairoMakie, StructuredLight
+using PartiallyCoherentSources, StructuredLight, CairoMakie
 
-rs = LinRange(-3f0, 3f0, 1920)
+rs = LinRange(-3, 3, 512)
+basis = stack([hg(rs, rs, m=1), hg(rs, rs, n=1)])
+weights = [1 / 2, 1 / 2]
+
 ##
-desired = lg(rs, rs; l=1, w=0.5f0)
-incoming = hg(rs, rs)
+N = 300
+fields = generate_fields(N, weights, basis, PhaseRandomized())
+I = sum(x -> abs2.(x), eachslice(fields, dims=3)) / N
+visualize(I)
+##
 
-holo = generate_hologram(desired, incoming, rs, rs, 255, 30, 40)
-visualize(holo, colormap=:Greys)
+I2 = sum(pair -> pair[1] * abs2.(pair[2]), zip(weights, eachslice(basis, dims=3)))
 
-@benchmark generate_hologram($desired, $incoming, $rs, $rs, 255, 30, 40)
+maximum(I)
+maximum(I2)
+
+isapprox(I,I2, rtol = 1e-2)
+
+visualize(sum(pair -> pair[1] * abs2.(pair[2]), zip(weights, eachslice(basis, dims=3))))

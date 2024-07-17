@@ -2,7 +2,7 @@ using BayesianTomography, HDF5, LsqFit, PositionMeasurements, ProgressMeter
 includet("../Utils/model_fitting.jl")
 includet("../Utils/basis.jl")
 
-file = h5open("Data/Raw/positive_l.h5")
+file = h5open("Data/Processed/positive_l.h5")
 calibration = read(file["calibration"])
 
 p0 = Float64.([maximum(calibration), 0, 0, 0.1, 1, 3])

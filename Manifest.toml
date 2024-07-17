@@ -2,12 +2,12 @@
 
 julia_version = "1.10.4"
 manifest_format = "2.0"
-project_hash = "0dc5550baf3a8ffcfd49e11456b59bc8f92b49c6"
+project_hash = "906332daeac29e2c132ba1bd340e681c31823fe5"
 
 [[deps.ADTypes]]
-git-tree-sha1 = "7a6b285f217ba92b5b474b783b4c2e8cf8218aaa"
+git-tree-sha1 = "1f3835083f5b40fc01a3c87e64bc3275cf447481"
 uuid = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
-version = "1.5.3"
+version = "1.5.4"
 
     [deps.ADTypes.extensions]
     ADTypesChainRulesCoreExt = "ChainRulesCore"
@@ -1316,6 +1316,12 @@ version = "0.3.28"
 [[deps.Logging]]
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
+[[deps.LsqFit]]
+deps = ["Distributions", "ForwardDiff", "LinearAlgebra", "NLSolversBase", "Printf", "StatsAPI"]
+git-tree-sha1 = "40acc20cfb253cf061c1a2a2ea28de85235eeee1"
+uuid = "2fda8390-95c7-5789-9bda-21331edee243"
+version = "0.15.0"
+
 [[deps.MKL_jll]]
 deps = ["Artifacts", "IntelOpenMP_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "oneTBB_jll"]
 git-tree-sha1 = "f046ccd0c6db2832a9f639e2c669c6fe867e5f4f"
@@ -1677,7 +1683,7 @@ uuid = "2dfb63ee-cc39-5dd5-95bd-886bf059d720"
 version = "1.4.3"
 
 [[deps.PositionMeasurements]]
-deps = ["ClassicalOrthogonalPolynomials", "Integrals", "PrecompileTools", "Tullio"]
+deps = ["ClassicalOrthogonalPolynomials", "Integrals", "LinearAlgebra", "PrecompileTools", "Tullio"]
 path = "../PositionMeasurements.jl"
 uuid = "4f50160c-5eac-4c4e-9f5f-045f60a7a294"
 version = "0.1.1"

@@ -1,4 +1,4 @@
-using StructuredLight
+using StructuredLight, LsqFit
 
 function twoD_Gaussian(xy, p)
     x₀, y₀, w, α, amplitude, offset = p

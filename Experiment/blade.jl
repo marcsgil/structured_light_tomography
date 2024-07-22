@@ -3,14 +3,16 @@ using HDF5, BayesianTomography, LinearAlgebra, Tullio
 includet("ximea.jl")
 includet("../Utils/basis.jl")
 includet("../Utils/model_fitting.jl")
-
-slm = SLM()
+includet("../Utils/loops.jl")
 ##
 width = 15.36f0
 height = 8.64f0
 resX = 1920
 resY = 1080
 w = 0.3f0
+max_modulation = 82
+x_period = 5
+y_period = 4
 
 X = LinRange(-width / 2, width / 2, resX)
 Y = LinRange(-height / 2, height / 2, resY)
@@ -18,35 +20,63 @@ x = centralized_cut(X, 300)
 y = centralized_cut(Y, 300)
 
 incoming = hg(x, y, w=2.4f0)
-desired = hg(x, y; w, n=0, m=0)
+slm = SLM()
+##
+desired = hg(x, y; w, n=10, m=10)
 
-holo = generate_hologram(desired, incoming, x, y, 82, 5, 4)
+holo = generate_hologram(desired, incoming, x, y, max_modulation, x_period, y_period)
 update_hologram(slm, holo, sleep_time=0)
 ##
-width = 200
-height = 200
-camera = XimeaCamera()
-set_param(camera, "downsampling", "XI_DWN_2x2")
-set_param(camera, "width", width)
-set_param(camera, "height", height)
-set_param(camera, "offsetX", 8)
-set_param(camera, "offsetY", 232)
-set_param(camera, "exposure", 1000)
-get_param(camera, "framerate")
-##
+camera = XimeaCamera(
+    "downsampling" => "XI_DWN_2x2",
+    "width" => 200,
+    "height" => 200,
+    "offsetX" => 8,
+    "offsetY" => 230,
+    "exposure" => 1000,
+)
 using CairoMakie
-
-calibration = capture(camera)
-visualize(calibration)
 ##
-x_cam = axes(calibration, 1)
-y_cam = axes(calibration, 2)
-xy = hcat(([x, y] for x in x_cam, y in y_cam)...)
+function get_calibration(saving_path, x, y, w, max_modulation, x_period, y_period, camera, slm)
+    desired = hg(x, y; w)
 
-p0 = Float64.([length(x_cam) ÷ 2, length(y_cam) ÷ 2, length(x_cam) ÷ 10, 1, maximum(calibration), minimum(calibration)])
-fit = LsqFit.curve_fit(twoD_Gaussian, xy, calibration[:, :, 1] |> vec, p0)
+    holo = generate_hologram(desired, incoming, x, y, max_modulation, x_period, y_period)
+    update_hologram(slm, holo)
 
-fit.param
+    while true
+        calibration = capture(camera)
+        display(visualize(calibration))
+
+        println("Do you accept?")
+        answer = readline()
+
+        if answer == "y"
+            @info "Calculating fit"
+            x_cam = axes(calibration, 1)
+            y_cam = axes(calibration, 2)
+            xy = hcat(([x, y] for x in x_cam, y in y_cam)...)
+
+            p0 = Float64.([length(x_cam) ÷ 2, length(y_cam) ÷ 2, length(x_cam) ÷ 10, 1, maximum(calibration), minimum(calibration)])
+            fit = LsqFit.curve_fit(twoD_Gaussian, xy, calibration[:, :, 1] |> vec, p0)
+
+            h5open(saving_path, "cw") do file
+                file["x"] = x_cam |> collect
+                file["y"] = y_cam |> collect
+                file["fit_param"] = fit.param
+            end
+            break
+        elseif answer == "q"
+            break
+        end
+    end
+
+    return nothing
+end
+
+get_calibration("Data/Raw/blade.h5", x, y, w, max_modulation, x_period, y_period, camera, slm)
+##
+
+
 ##
 confidence_inter = confint(fit; level=0.99)
 ##
@@ -84,20 +114,7 @@ end
 
 visualize(model(x_cam, y_cam, vcat(fit.param, pos)))
 ##
-function loop_capture!(output, desireds, incoming, slm, camera,
-    x, y, max_modulation, xperiod, yperiod; sleep_time=0.15)
-    N = size(desireds, 3)
-    holo = generate_hologram(view(desireds, :, :, 1), incoming, x, y, max_modulation, xperiod, yperiod)
-    @showprogress for n ∈ 1:N-1
-        update_hologram(slm, holo; sleep_time)
-        holo = generate_hologram(view(desireds, :, :, n + 1), incoming, x, y, 82, 5, 4)
-        capture!(view(output, :, :, n), camera)
-    end
 
-    update_hologram(slm, holo)
-    capture!(view(output, :, :, N), camera)
-    nothing
-end
 
 function basis_loop(n_modes, n_masks, basis_functions,
     saving_path, saving_name, incoming,

@@ -106,10 +106,9 @@ get_param(camera, "framerate")
 @benchmark capture($camera)
 ##
 using CairoMakie
-buffer = Matrix{UInt8}(undef, width, height)
-capture!(buffer, camera)
+img = capture(camera)
 
-visualize(buffer)
+visualize(img)
 
 maximum(buffer) |> Int
 ##

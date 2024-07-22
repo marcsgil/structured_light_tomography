@@ -10,9 +10,19 @@ end
 function XimeaCamera()
     camera = xiapi.Camera()
     camera.open_device()
-    camera.set_exposure(1000)
     camera.start_acquisition()
+
     XimeaCamera(camera, xiapi.Image())
+end
+
+function XimeaCamera(configs...)
+    camera = XimeaCamera()
+
+    for (key, value) ∈ configs
+        set_param(camera, key, value)
+    end
+
+    camera
 end
 
 function capture!(buffer, camera::XimeaCamera)
@@ -36,9 +46,18 @@ function Base.close(camera::XimeaCamera)
 end
 
 function set_param(camera::XimeaCamera, param::String, value)
-    camera.camera.set_param(param, value)
+    try
+        camera.camera.set_param(param, value)
+    catch
+        @warn "Could not set the parameter $param to the value $value."
+    end
+    nothing
 end
 
 function get_param(camera::XimeaCamera, param::String)
-    camera.camera.get_param(param)
+    try
+        camera.camera.get_param(param)
+    catch
+        @warn "Could not get the value of the parameter $param"
+    end
 end

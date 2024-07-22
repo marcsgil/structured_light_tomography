@@ -1,7 +1,7 @@
 using SpatialLightModulator, StructuredLight, ProgressMeter, PartiallyCoherentSources
 using HDF5, BayesianTomography, LinearAlgebra, Tullio
 includet("ximea.jl")
-includet("../basis.jl")
+includet("../Utils/basis.jl")
 
 function loop_capture!(output, desireds, incoming, slm, camera,
     x, y, max_modulation, xperiod, yperiod; sleep_time=0.15)
@@ -25,7 +25,7 @@ function basis_loop(n_modes, n_masks, basis_functions,
     file = h5open(saving_path, "cw")
 
     basis = stack(f(x, y) for f ∈ basis_functions)
-    ρs = sample(GinibreEnsamble(size(basis, 3)), n_modes)
+    ρs = file["labels_dim$(length(basis_functions))"][:, :, :]
     eigen_states = similar(basis)
     desireds = Array{ComplexF32,3}(undef, size(basis, 1), size(basis, 2), n_masks)
 
@@ -48,7 +48,7 @@ function basis_loop(n_modes, n_masks, basis_functions,
     end
 
     file["images_"*saving_name] = result
-    file["labels_"*saving_name] = ρs
+    #file["labels_"*saving_name] = ρs
     close(file)
 end
 
@@ -61,11 +61,12 @@ function full_loop(n_modes, n_masks, max_dims, w,
     holo = generate_hologram(desired, incoming, x, y, max_modulation, xperiod, yperiod)
     update_hologram(slm, holo)
     file["calibration"] = capture(camera)
+
     close(file)
 
     for dims ∈ 2:max_dims
         @info "Processing dim $dims"
-        basis_functions = positive_l_basis(dims, w)
+        basis_functions = positive_l_basis(dims, [0, 0, w, 1])
         basis_loop(n_modes, n_masks, basis_functions,
             saving_path, "dim$dims",
             incoming, slm, camera, x, y, max_modulation, xperiod, yperiod; sleep_time)
@@ -86,7 +87,7 @@ x = centralized_cut(X, 300)
 y = centralized_cut(Y, 300)
 
 incoming = hg(x, y, w=2.4f0)
-desired = hg(x, y; w, n=1)
+desired = hg(x, y; w, n=10, m=10)
 
 holo = generate_hologram(desired, incoming, x, y, 82, 5, 4)
 update_hologram(slm, holo, sleep_time=0)
@@ -98,7 +99,7 @@ set_param(camera, "downsampling", "XI_DWN_2x2")
 set_param(camera, "width", width)
 set_param(camera, "height", height)
 set_param(camera, "offsetX", 28)
-set_param(camera, "offsetY", 254)
+set_param(camera, "offsetY", 190)
 set_param(camera, "exposure", 1000)
 get_param(camera, "framerate")
 ##
@@ -109,8 +110,10 @@ buffer = Matrix{UInt8}(undef, width, height)
 capture!(buffer, camera)
 
 visualize(buffer)
+
+maximum(buffer) |> Int
 ##
-basis_functions = positive_l_basis(2, w)
+#basis_functions = positive_l_basis(2, w)
 #basis_loop(2, 300, basis_functions, "test.h5", "order1", incoming, slm, camera, x, y, 82, 5, 4)
 
 full_loop(100, 300, 6, w,

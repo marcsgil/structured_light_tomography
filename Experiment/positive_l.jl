@@ -92,16 +92,14 @@ desired = hg(x, y; w, n=10, m=10)
 holo = generate_hologram(desired, incoming, x, y, 82, 5, 4)
 update_hologram(slm, holo, sleep_time=0)
 ##
-width = 200
-height = 200
-camera = XimeaCamera()
-set_param(camera, "downsampling", "XI_DWN_2x2")
-set_param(camera, "width", width)
-set_param(camera, "height", height)
-set_param(camera, "offsetX", 28)
-set_param(camera, "offsetY", 190)
-set_param(camera, "exposure", 1000)
-get_param(camera, "framerate")
+camera = XimeaCamera(
+    "downsampling" => "XI_DWN_2x2",
+    "width" => 200,
+    "height" => 200,
+    "offsetX" => 8,
+    "offsetY" => 230,
+    "exposure" => 1000,
+)
 ##
 @benchmark capture($camera)
 ##
@@ -110,7 +108,7 @@ img = capture(camera)
 
 visualize(img)
 
-maximum(buffer) |> Int
+#maximum(buffer) |> Int
 ##
 #basis_functions = positive_l_basis(2, w)
 #basis_loop(2, 300, basis_functions, "test.h5", "order1", incoming, slm, camera, x, y, 82, 5, 4)

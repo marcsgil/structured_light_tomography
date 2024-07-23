@@ -1,9 +1,23 @@
 using StructuredLight, LsqFit
 
-function twoD_Gaussian(xy, p)
-    x₀, y₀, w, α, amplitude, offset = p
+function surface_fit(model, x, y, data, p0)
+    function _model(xy, p)
+        x = view(xy, 1, :)
+        y = view(xy, 2, :)
+        map((x, y) -> model(x, y, p), x, y)
+    end
 
-    x = view(xy, 1, :)
-    y = view(xy, 2, :)
-    @. offset + amplitude * abs2(hg(x - x₀, α * (y - y₀); w, include_normalization=false))
+    xy = hcat(([x, y] for x in x, y in y)...)
+    LsqFit.curve_fit(_model, xy, vec(data), p0)
+end
+
+function gaussian_model(x, y, p)
+    x₀, y₀, w, α, amplitude, offset = p
+    offset + amplitude * abs2(hg(x - x₀, α * (y - y₀); w, include_normalization=false))
+end
+
+function blade_model(x, y, p)
+    _p = @view p[begin:end-1]
+    blade_pos = p[end]
+    gaussian_model(x, y, _p) * (x < blade_pos)
 end

@@ -9,10 +9,10 @@ width = 15.36f0
 height = 8.64f0
 resX = 1920
 resY = 1080
-w = 0.4f0
+w = 0.3f0
 max_modulation = 82
-x_period = 5
-y_period = 4
+x_period = 4
+y_period = 5
 
 X = LinRange(-width / 2, width / 2, resX)
 Y = LinRange(-height / 2, height / 2, resY)
@@ -25,6 +25,6 @@ slm = SLM()
 ##
 display_calibration(w, incoming, x, y, max_modulation, x_period, y_period, slm)
 ##
-desired = lg(x, y; w, p=1, l=0)
+desired = lg(x, y; w, l = 2)
 holo = generate_hologram(desired, incoming, x, y, max_modulation, x_period, y_period)
 update_hologram(slm, holo)

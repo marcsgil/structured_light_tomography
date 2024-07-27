@@ -108,6 +108,26 @@ function finite_diff_x_derivative(img)
     x_derivative
 end
 
+function finite_diff_r_derivative(img, x, y, x₀, y₀)
+    r_derivative = Matrix{Float64}(undef, size(img, 1) - 1, size(img, 2) - 1)
+
+    for n ∈ axes(r_derivative, 2)
+        for m ∈ axes(r_derivative, 1)
+            Δx = x[m] - x₀
+            Δy = y[n] - y₀
+            r = sqrt(Δx^2 + Δy^2)
+
+            r_derivative[m, n] = (Δx * (Int(img[m+1, n]) - Int(img[m, n]))
+                                  +
+                                  Δy * (Int(img[m, n+1]) - Int(img[m, n]))) / r
+        end
+    end
+
+    r_derivative
+end
+
+
+
 function finite_diff_derivative(img)
     derivative = Vector{Int}(undef, length(img) - 1)
 
@@ -209,9 +229,17 @@ function find_iris_bounding_square(img, x₀, y₀)
     x₋, x₊, y₋, y₊
 end
 
-function find_iris_radius(img, x₀, y₀)
-    x₋, x₊, y₋, y₊ = find_iris_bounding_square(img, x₀, y₀)
-    (x₊ - x₋ + y₊ - y₋) / 4
+function find_iris_radius(img, x, y, x₀, y₀)
+    r_derivative = finite_diff_r_derivative(img, x, y, x₀, y₀)
+
+    #rs = zeros(eltype(r_derivative), length(r_derivative))
+    #counts = zeros(Int, length(r_derivative))
+
+    idxs = argmin(r_derivative)
+
+    @show idxs
+
+    sqrt((x[idxs[1]] - x₀)^2 + (y[idxs[2]] - y₀)^2)
 end
 
 function display_img_and_circle(img, radius, x₀, y₀)
@@ -250,23 +278,40 @@ end
 function prompt_iris_measurement(saving_path, density_matrix_path, n_masks,
     incoming, x, y, w, max_modulation, x_period, y_period, camera, slm; sleep_time=0.15)
 
-    display_calibration(w, incoming, x, y, max_modulation, x_period, y_period, slm)
+    #display_calibration(w, incoming, x, y, max_modulation, x_period, y_period, slm)
+    l = 2
+    p = 0
 
-    fit_param = h5open(saving_path) do file
+    desired = lg(x, y; w, p, l)
+    holo = generate_hologram(desired, incoming, x, y, max_modulation, x_period, y_period)
+    update_hologram(slm, holo)
+
+    fit_param, x_cam, y_cam = h5open(saving_path) do file
         if "fit_param" ∈ keys(file)
-            file["fit_param"] |> read
+            obj = file["fit_param"]
+            read(obj), attrs(obj)["x"], attrs(obj)["y"]
         else
             error("No calibration data found in the file.")
         end
     end
 
+    x₀ = fit_param[1]
+    y₀ = fit_param[2]
+
     should_quit = false
     while !should_quit
         img = capture(camera)
-        radius = find_iris_radius(img, fit_param[1], fit_param[2])
-        display_img_and_circle(img, radius, fit_param[1], fit_param[2])
+        radius = find_iris_radius(img, x_cam, y_cam, x₀, y₀)
+
+        r_deriv = finite_diff_r_derivative(img, x_cam, y_cam, fit_param[1], fit_param[2])
+        m, M = extrema(r_deriv)
+        range = max(abs(M), abs(m))
+        display(heatmap(r_deriv, colormap=:bwr, colorrange=(-range, range)))
+
+        display_img_and_circle(img, radius, x₀, y₀)
         #x₋, x₊, y₋, y₊ = find_iris_bounding_square(img, fit_param[1], fit_param[2])
         #display_img_and_square(img, x₋, x₊, y₋, y₊)
+
         normalized_radius = radius / fit_param[3]
         println("Normalized radius: $normalized_radius")
 

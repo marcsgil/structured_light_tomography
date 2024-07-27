@@ -9,10 +9,10 @@ width = 15.36f0
 height = 8.64f0
 resX = 1920
 resY = 1080
-w = 0.3f0
+w = 0.2f0
 max_modulation = 82
-x_period = 4
-y_period = 5
+x_period = 5
+y_period = 4
 
 X = LinRange(-width / 2, width / 2, resX)
 Y = LinRange(-height / 2, height / 2, resY)
@@ -25,10 +25,10 @@ slm = SLM()
 ##
 camera = XimeaCamera(
     "downsampling" => "XI_DWN_2x2",
-    "width" => 400,
-    "height" => 400,
+    "width" => 200,
+    "height" => 200,
     "offsetX" => 8,
-    "offsetY" => 10,
+    "offsetY" => 268,
     "exposure" => 1000,
 )
 using CairoMakie

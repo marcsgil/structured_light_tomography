@@ -126,18 +126,6 @@ function finite_diff_r_derivative(img, x, y, x₀, y₀)
     r_derivative
 end
 
-
-
-function finite_diff_derivative(img)
-    derivative = Vector{Int}(undef, length(img) - 1)
-
-    for n ∈ eachindex(derivative)
-        derivative[n] = Int(img[n+1]) - Int(img[n])
-    end
-
-    derivative
-end
-
 function find_blade_position(img)
     x_derivative = finite_diff_x_derivative(img)
     sum(abs, x_derivative, dims=2) |> vec |> argmax
@@ -214,31 +202,9 @@ function prompt_blade_measurement(saving_path, density_matrix_path, n_masks,
     end
 end
 
-function find_iris_bounding_square(img, x₀, y₀)
-    x_derivative = finite_diff_derivative(view(img, :, round(Int, y₀)))
-    y_derivative = finite_diff_derivative(view(img, round(Int, x₀), :))
-
-    f(x, cutoff) = [abs(x[n]) * (n < cutoff) for n ∈ eachindex(x)]
-    g(x, cutoff) = [abs(x[n]) * (n > cutoff) for n ∈ eachindex(x)]
-
-    x₋ = f(x_derivative, x₀) |> argmax
-    x₊ = g(x_derivative, x₀) |> argmax
-    y₋ = f(y_derivative, y₀) |> argmax
-    y₊ = g(y_derivative, y₀) |> argmax
-
-    x₋, x₊, y₋, y₊
-end
-
 function find_iris_radius(img, x, y, x₀, y₀)
     r_derivative = finite_diff_r_derivative(img, x, y, x₀, y₀)
-
-    #rs = zeros(eltype(r_derivative), length(r_derivative))
-    #counts = zeros(Int, length(r_derivative))
-
     idxs = argmin(r_derivative)
-
-    @show idxs
-
     sqrt((x[idxs[1]] - x₀)^2 + (y[idxs[2]] - y₀)^2)
 end
 
@@ -254,31 +220,9 @@ function display_img_and_circle(img, radius, x₀, y₀)
     display(fig)
 end
 
-function display_img_and_square(img, x₋, x₊, y₋, y₊)
-    fig = Figure(size=(1080, 1080), figure_padding=0)
-    ax = Axis(fig[1, 1], aspect=DataAspect())
-    hidedecorations!(ax)
-    heatmap!(ax, img, colormap=:jet)
-    vlines!(ax, [x₋, x₊], color=:red, linewidth=4)
-    hlines!(ax, [y₋, y₊], color=:red, linewidth=4)
-    display(fig)
-end
-
-function display_img_and_square(img, x₊, y₊)
-    fig = Figure(size=(1080, 1080), figure_padding=0)
-    ax = Axis(fig[1, 1], aspect=DataAspect())
-    hidedecorations!(ax)
-    heatmap!(ax, img, colormap=:jet)
-    vlines!(ax, x₊, color=:red, linewidth=4)
-    hlines!(ax, y₊, color=:red, linewidth=4)
-    display(fig)
-end
-
-
 function prompt_iris_measurement(saving_path, density_matrix_path, n_masks,
     incoming, x, y, w, max_modulation, x_period, y_period, camera, slm; sleep_time=0.15)
 
-    #display_calibration(w, incoming, x, y, max_modulation, x_period, y_period, slm)
     l = 2
     p = 0
 
@@ -309,8 +253,6 @@ function prompt_iris_measurement(saving_path, density_matrix_path, n_masks,
         display(heatmap(r_deriv, colormap=:bwr, colorrange=(-range, range)))
 
         display_img_and_circle(img, radius, x₀, y₀)
-        #x₋, x₊, y₋, y₊ = find_iris_bounding_square(img, fit_param[1], fit_param[2])
-        #display_img_and_square(img, x₋, x₊, y₋, y₊)
 
         normalized_radius = radius / fit_param[3]
         println("Normalized radius: $normalized_radius")
@@ -325,11 +267,9 @@ function prompt_iris_measurement(saving_path, density_matrix_path, n_masks,
 
         saving_name = fragment * "$(previous_mode + 1)"
 
-        should_quit = prompt_user(() -> nothing)
-
-        """should_quit = prompt_user((basis_loop),
+        should_quit = prompt_user(basis_loop,
             basis_functions, ρs, n_masks,
             saving_path, saving_name, incoming,
-            slm, camera, x, y, max_modulation, x_period, y_period; sleep_time, par=[blade_pos, normalized_blade_pos])"""
+            slm, camera, x, y, max_modulation, x_period, y_period; sleep_time, par=[radius, normalized_radius])
     end
 end

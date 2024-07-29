@@ -27,8 +27,8 @@ camera = XimeaCamera(
     "downsampling" => "XI_DWN_2x2",
     "width" => 200,
     "height" => 200,
-    "offsetX" => 8,
-    "offsetY" => 268,
+    "offsetX" => 100,
+    "offsetY" => 98,
     "exposure" => 1000,
 )
 using CairoMakie

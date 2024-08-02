@@ -9,10 +9,12 @@ fit_param, x, y = h5open(path) do file
 end
 
 images, ρs, par = h5open(path) do file
-    obj = file["images_2"]
+    obj = file["images_1"]
 
     read(obj), attrs(obj)["density_matrices"], attrs(obj)["par"]
 end
+
+fit_param[3] = fit_param[3] / √2
 
 relu(x, y) = x > y ? x - y : zero(x)
 

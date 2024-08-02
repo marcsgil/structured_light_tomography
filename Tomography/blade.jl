@@ -6,6 +6,8 @@ fit_param, x, y = h5open("Data/Raw/blade.h5") do file
     read(obj), attrs(obj)["x"], attrs(obj)["y"]
 end
 
+fit_param[3] = fit_param[3] / √2
+
 images, ρs, par = h5open("Data/Raw/blade.h5") do file
     obj = file["images_5"]
 
@@ -26,15 +28,13 @@ mthd = LinearInversion(povm)
 fids = Vector{Float64}(undef, size(treated_images, 3))
 
 for n ∈ axes(treated_images, 3)
-    σ = prediction(Float32.(treated_images[:, :, n]), mthd)
+    σ, _ = prediction(Float32.(images[:, :, n]), mthd)
     fids[n] = fidelity(ρs[:, :, n], σ)
 end
 
 mean(fids)
 ##
-visualize(treated_images[:, :, 8])
-ρs[:, :, 1]
-prediction(images[:, :, 1], mthd)
+n = 10
+visualize(treated_images[:, :, n])
 
-sum(Int, images[:, :, 1])
-##
+visualize([real(tr(ρs[:,:,n] * Π)) for Π ∈ povm])

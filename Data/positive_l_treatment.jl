@@ -10,11 +10,7 @@ calibration = read(file["calibration"])
 x = LinRange(-0.5, 0.5, size(calibration, 1))
 y = LinRange(-0.5, 0.5, size(calibration, 2))
 
-#x = axes(calibration, 1)
-#y = axes(calibration, 2)
-
 p0 = Float64.([0, 0, 0.1, 1, maximum(calibration), minimum(calibration)])
-#p0 = Float64.([length(x) / 2, length(y) / 2, length(x) / 6, 1, maximum(calibration), minimum(calibration)])
 fit = surface_fit(gaussian_model, x, y, calibration, p0)
 
 fit.param

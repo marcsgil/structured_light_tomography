@@ -15,9 +15,9 @@ y = LinRange(-height / 2, height / 2, resY)
 #x = centralized_cut(X, 600)
 #y = centralized_cut(Y, 600)
 
-incoming = hg(x, y, γ=2.3f0)
+incoming = hg(x, y, γ=1.6f0)
 ##
-desired = lg(x, y; γ, l=2)
+desired = lg(x, y; γ, p=1)
 holo = generate_hologram(desired, incoming, x, y, 
 max_modulation, x_period, y_period)
 update_hologram(slm, holo)

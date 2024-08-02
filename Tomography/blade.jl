@@ -35,7 +35,11 @@ end
 fids
 mean(fids)
 ##
-n = 10
-visualize(treated_images[:, :, n])
+n = 4
+visualize(images[:, :, n])
 
 visualize([real(tr(ρs[:, :, n] * Π)) for Π ∈ povm])
+
+h5open("Data/Raw/blade.h5") do file
+    read(file["calibration"])
+end |> visualize

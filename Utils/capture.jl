@@ -189,7 +189,7 @@ function prompt_blade_measurement(saving_path, density_matrix_path, n_masks,
 
         basis_functions = positive_l_basis(2, [0, 0, γ, 1])
         ρs = h5open(density_matrix_path) do file
-            file["labels_dim$(length(basis_functions))"] |> read
+            file["labels_dim$(length(basis_functions))"][:, :, 1:3]
         end
 
         fragment = "images_"

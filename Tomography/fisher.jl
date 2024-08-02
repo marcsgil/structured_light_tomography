@@ -17,8 +17,9 @@ rs = Base.oneto(200)
 x₀ = length(rs) ÷ 2
 y₀ = length(rs) ÷ 2
 w = length(rs) ÷ 8
+γ = √2 * w
 
-basis = positive_l_basis(2, [x₀, y₀, w, 1])
+basis = positive_l_basis(2, [x₀, y₀, γ, 1])
 povm = assemble_position_operators(rs, rs, basis)
 ##
 cutoffs = LinRange(x₀ - 1.2w, x₀ + 2.5w, 32)
@@ -29,8 +30,8 @@ d = length(basis)
 
 Is = Array{Float32,3}(undef, d^2 - 1, d^2 - 1, length(cutoffs))
 
-for (n, cutoff) ∈ enumerate(cutoffs)
-    _povm = filter_povm(povm, R -> h_filter(R, cutoff), rs, rs)
+Threads.@threads for n ∈ eachindex(cutoffs)
+    _povm = filter_povm(povm, R -> h_filter(R, cutoffs[n]), rs, rs)
     Is[:, :, n] = mean(fisher_information(ρs, _povm), dims=3)
 end
 
@@ -55,7 +56,7 @@ with_theme(theme_latexfonts()) do
         linestyle=[:solid, :dash, :dot],)
     axislegend(position=:rt)
     fig
-    save("Plots/fisher_blade.pdf", fig)
+    #save("Plots/fisher_blade.pdf", fig)
 end
 ##
 cutoffs = LinRange(0.3w, 2w, 32)
@@ -93,3 +94,24 @@ with_theme(theme_latexfonts()) do
     fig
     #save("Plots/fisher_iris.pdf", fig)
 end
+##
+rs = Base.oneto(200)
+x₀ = length(rs) ÷ 2
+y₀ = length(rs) ÷ 2
+w = length(rs) ÷ 4
+
+basis = only_l_basis(2, [x₀, y₀, w, 1])
+
+povm = assemble_position_operators(rs, rs, basis)
+
+N = 10
+d = length(basis)
+ρs = sample(ProductMeasure(d), N)
+
+inv_I = mean(ρ->fisher_information(ρ, povm), eachslice(ρs, dims=3)) |> inv
+
+diag(inv_I) |> sort
+
+
+ρs[:,:,5]
+visualize([real(tr(ρs[:,:,6] * Π)) for Π ∈ povm])

@@ -1,31 +1,33 @@
-using BayesianTomography, HDF5, PositionMeasurements, ProgressMeter, LinearAlgebra
-includet("../Utils/basis.jl")
+using HDF5, StatsBase, BayesianTomography, PositionMeasurements, ProgressMeter
 
-file = h5open("Data/Processed/mixed_intense.h5")
-direct_fit_param = read(file["direct_fit_param"])
-converted_fit_param = read(file["converted_fit_param"])
+includet("../Data/data_treatment_utils.jl")
 
-rs = LinRange(-0.5, 0.5, 400)
+input = h5open("Data/Processed/mixed_intense.h5")
+
+direct_lims = read(input["direct_lims"])
+converted_lims = read(input["converted_lims"])
+
+xd, yd = get_grid(direct_lims, (400, 400))
+xc, yc = get_grid(converted_lims, (400, 400))
+weights = read(input["weights"])
 ##
 orders = 1:5
 fids = Matrix{Float64}(undef, length(orders), 100)
 
 @showprogress for (m, order) ∈ enumerate(orders)
-    direct_basis = fixed_order_basis(order, direct_fit_param[1:4]) |> reverse
-    converted_basis = fixed_order_basis(order, converted_fit_param[1:4]) |> reverse
-    direct_operators = assemble_position_operators(rs, rs, direct_basis)
-    converted_operators = assemble_position_operators(rs, rs, converted_basis)
+    images = read(input["images_order$order"])
+    ρs = read(input["labels_order$order"])
+    basis = transverse_basis(order)
+
+    direct_operators = assemble_position_operators_simple(xd, yd, basis)
+    converted_operators = assemble_position_operators_simple(xc, yc, basis)
     mode_converter = diagm([cis(-k * π / 6) for k ∈ 0:order])
     unitary_transform!(converted_operators, mode_converter)
-    povm = compose_povm(direct_operators, converted_operators)
-
-    mthd = LinearInversion(povm)
-
-    images = read(file["images_order$order"])
-    ρs = read(file["labels_order$order"])
+    operators = compose_povm(direct_operators, converted_operators)
+    mthd = LinearInversion(operators)
 
     for (n, probs) ∈ enumerate(eachslice(images, dims=4))
-        σ = prediction(probs, mthd)
+        σ, _ = prediction(probs, mthd)
         fids[m, n] = fidelity(ρs[:, :, n], σ)
     end
 end

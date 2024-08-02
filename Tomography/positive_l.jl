@@ -11,7 +11,7 @@ visualize(file["images_dim2"][:, :, 3])
 file["labels_dim6"][:, :, 8]
 ##
 dims = 2:6
-fids = Matrix{Float64}(undef, length(dims), 1)
+fids = Matrix{Float64}(undef, length(dims), 100)
 
 @showprogress for (m, dim) ∈ enumerate(dims)
     basis = positive_l_basis(dim, fit_param[1:4])
@@ -19,11 +19,11 @@ fids = Matrix{Float64}(undef, length(dims), 1)
 
     mthd = LinearInversion(povm)
 
-    images = file["images_dim$dim"][:,:,1:1]
-    ρs = file["labels_dim$dim"][:,:,1]
+    images = file["images_dim$dim"][:, :, :]
+    ρs = file["labels_dim$dim"][:, :, :]
 
     for (n, probs) ∈ enumerate(eachslice(images, dims=3))
-        σ = prediction(probs, mthd)
+        σ, _ = prediction(probs, mthd)
         fids[m, n] = fidelity(ρs[:, :, n], σ)
     end
 end

@@ -1,4 +1,4 @@
-using HDF5, LsqFit, LinearAlgebra
+using HDF5, LinearAlgebra
 
 include("../Utils/model_fitting.jl")
 
@@ -9,10 +9,15 @@ calibration = read(file["calibration"])
 
 x = LinRange(-0.5, 0.5, size(calibration, 1))
 y = LinRange(-0.5, 0.5, size(calibration, 2))
-xy = hcat(([x, y] for x in x, y in y)...)
+
+#x = axes(calibration, 1)
+#y = axes(calibration, 2)
 
 p0 = Float64.([0, 0, 0.1, 1, maximum(calibration), minimum(calibration)])
-fit = LsqFit.curve_fit(twoD_Gaussian, xy, calibration[:, :, 1] |> vec, p0)
+#p0 = Float64.([length(x) / 2, length(y) / 2, length(x) / 6, 1, maximum(calibration), minimum(calibration)])
+fit = surface_fit(gaussian_model, x, y, calibration, p0)
+
+fit.param
 
 out["fit_param"] = fit.param
 
@@ -22,8 +27,6 @@ for dim ∈ 2:6
     images .-= round(UInt8, fit.param[6])
 
     out["images_dim$dim"] = images
-
-    #Python and Julia have different conventions for saving arrays
     out["labels_dim$dim"] = read(file["labels_dim$dim"])
 end
 

@@ -3,24 +3,14 @@ using BayesianTomography, StructuredLight,
     Tullio
 
 includet("../Utils/basis.jl")
-
-function filter_povm(povm, filter, x, y)
-    Rs = collect(Iterators.product(x, y))
-    idxs = findall(filter, Rs)
-    povm[idxs]
-end
-
-h_filter(R, cutoff) = R[1] < cutoff
-circ_filter(R, cutoff, x₀, y₀) = sqrt((R[1] - x₀)^2 + (R[2] - y₀)^2) < cutoff
 ##
 rs = Base.oneto(200)
 x₀ = length(rs) ÷ 2
 y₀ = length(rs) ÷ 2
 w = length(rs) ÷ 8
-γ = √2 * w
+γ = w / √2
 
-basis = positive_l_basis(2, [x₀, y₀, γ, 1])
-povm = assemble_position_operators(rs, rs, basis)
+_basis = positive_l_basis(2, [x₀, y₀, γ, 1])
 ##
 cutoffs = LinRange(x₀ - 1.2w, x₀ + 2.5w, 32)
 
@@ -31,8 +21,9 @@ d = length(basis)
 Is = Array{Float32,3}(undef, d^2 - 1, d^2 - 1, length(cutoffs))
 
 Threads.@threads for n ∈ eachindex(cutoffs)
-    _povm = filter_povm(povm, R -> h_filter(R, cutoffs[n]), rs, rs)
-    Is[:, :, n] = mean(fisher_information(ρs, _povm), dims=3)
+    basis = [(x, y) -> f(x, y) * (x < cutoffs[n]) for f ∈ _basis]
+    povm = assemble_position_operators_simple(rs, rs, basis)
+    Is[:, :, n] = mean(fisher_information(ρs, povm), dims=3)
 end
 
 inv_Is = mapslices(inv, Is, dims=(1, 2))
@@ -58,6 +49,15 @@ with_theme(theme_latexfonts()) do
     fig
     #save("Plots/fisher_blade.pdf", fig)
 end
+##
+_basis = [(x, y) -> f(x, y) * (x < cutoffs[27]) for f ∈ basis]
+
+povm = assemble_position_operators_simple(rs, rs, _basis)
+#@benchmark assemble_position_operators_simple($rs, $rs, $basis)
+
+img = [real(tr(ρs[:, :, 1] * Π)) for Π ∈ povm]
+
+visualize(img)
 ##
 cutoffs = LinRange(0.3w, 2w, 32)
 
@@ -108,10 +108,10 @@ N = 10
 d = length(basis)
 ρs = sample(ProductMeasure(d), N)
 
-inv_I = mean(ρ->fisher_information(ρ, povm), eachslice(ρs, dims=3)) |> inv
+inv_I = mean(ρ -> fisher_information(ρ, povm), eachslice(ρs, dims=3)) |> inv
 
 diag(inv_I) |> sort
 
 
-ρs[:,:,5]
-visualize([real(tr(ρs[:,:,6] * Π)) for Π ∈ povm])
+ρs[:, :, 5]
+visualize([real(tr(ρs[:, :, 6] * Π)) for Π ∈ povm])

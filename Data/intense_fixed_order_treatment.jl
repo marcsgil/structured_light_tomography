@@ -1,32 +1,36 @@
-using BayesianTomography, HDF5, PositionMeasurements, ProgressMeter, LinearAlgebra
-includet("../Utils/basis.jl")
+using TiffImages, ProgressMeter, HDF5, BayesianTomography
 
-file = h5open("Data/Processed/positive_l.h5")
-fit_param = read(file["fit_param"])
+include("data_treatment_utils.jl")
 
-rs = LinRange(-0.5, 0.5, 200)
-##
-dims = 6
-fids = Matrix{Float64}(undef, length(dims), 100)
+file = h5open("Data/Raw/mixed_intense.h5")
+out = h5open("Data/Processed/mixed_intense.h5", "cw")
 
-@showprogress for (m, dim) ∈ enumerate(dims)
-    basis = positive_l_basis(dim, fit_param[1:4])
-    povm = assemble_position_operators(rs, rs, basis)
+calibration = read(file["calibration"])
 
-    mthd = LinearInversion(povm)
+remove_background!(calibration)
+direct_lims, converted_lims = get_limits(calibration)
 
-    images = read(file["images_dim$dim"])
-    ρs = read(file["labels_dim$dim"])
+out["direct_lims"] = direct_lims
+out["converted_lims"] = converted_lims
 
-    for (n, probs) ∈ enumerate(eachslice(images, dims=3))
-        σ = prediction(probs, mthd)
-        fids[m, n] = fidelity(ρs[:, :, n], σ)
+out["weights"] = [sum(calibration[:, :, 1]), sum(calibration[:, :, 2])] / sum(calibration)
+
+for order ∈ 1:5
+    images = Float64.(read(file["images_order$order"]))
+    remove_background!(images)
+
+    for image ∈ eachslice(images, dims=(3, 4))
+        normalize!(image, 1)
+        @. image /= 2
     end
+    out["images_order$order"] = images
+    HDF5.attributes(out["images_order$order"])["angle"] = read_attribute(file["images_order$order"], "angle")
+
+    #Python and Julia have different conventions for saving arrays
+    out["labels_order$order"] = permutedims(read(file["labels_order$order"]), (2, 1, 3))
 end
 
-dropdims(mean(fids, dims=2), dims=2)
-##
-out = h5open("New/Results/Intense/linear_inversion.h5", "w")
-out["fids"] = dropdims(mean(fids, dims=2), dims=2)
-out["fids_std"] = dropdims(std(fids, dims=2), dims=2)
+sum(read(out["images_order4"])[:, :, :, 1])
+
 close(out)
+close(file)

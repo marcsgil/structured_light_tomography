@@ -61,14 +61,15 @@ function prompt_user(f, args...; prompt="Do you accept?", kwargs...)
 end
 
 function calculate_calibration_fit(calibration, saving_path, object_name="fit_param")
-    x = axes(calibration, 1)
-    y = axes(calibration, 2)
+    x = LinRange(-0.5, 0.5, size(calibration, 1))
+    y = LinRange(-0.5, 0.5, size(calibration, 2))
 
-    p0 = Float64.([length(x) ÷ 2, length(y) ÷ 2, length(x) ÷ 10, 1, maximum(calibration), minimum(calibration)])
+    p0 = Float64.([0, 0, 0.1, 1, maximum(calibration), minimum(calibration)])
 
     fit = surface_fit(gaussian_model, x, y, calibration, p0)
 
     h5open(saving_path, "cw") do file
+        file["calibration"] = calibration
         file[object_name] = fit.param
         attrs(file[object_name])["x"] = collect(x)
         attrs(file[object_name])["y"] = collect(y)
@@ -77,14 +78,14 @@ function calculate_calibration_fit(calibration, saving_path, object_name="fit_pa
     nothing
 end
 
-function display_calibration(w, incoming, x, y, max_modulation, x_period, y_period, slm)
-    desired = hg(x, y; w)
+function display_calibration(γ, incoming, x, y, max_modulation, x_period, y_period, slm)
+    desired = hg(x, y; γ)
     holo = generate_hologram(desired, incoming, x, y, max_modulation, x_period, y_period)
     update_hologram(slm, holo)
 end
 
-function get_calibration(saving_path, incoming, x, y, w, max_modulation, x_period, y_period, camera, slm)
-    display_calibration(w, incoming, x, y, max_modulation, x_period, y_period, slm)
+function get_calibration(saving_path, incoming, x, y, γ, max_modulation, x_period, y_period, camera, slm)
+    display_calibration(γ, incoming, x, y, max_modulation, x_period, y_period, slm)
 
     should_quit = false
     while !should_quit
@@ -140,8 +141,8 @@ function display_img_and_vline(img, vline_pos)
     display(fig)
 end
 
-function normalized_position(pos, x₀, w)
-    (pos - x₀) / w
+function normalized_position(pos, x₀, γ)
+    √2 * (pos - x₀) / γ
 end
 
 function length_previous_modes(path, fragment)
@@ -169,9 +170,10 @@ function prompt_blade_measurement(saving_path, density_matrix_path, n_masks,
 
     display_calibration(w, incoming, x, y, max_modulation, x_period, y_period, slm)
 
-    fit_param = h5open(saving_path) do file
+    fit_param, x = h5open(saving_path) do file
         if "fit_param" ∈ keys(file)
-            file["fit_param"] |> read
+            obj = file["fit_param"]
+            read(obj), attrs(obj)["x"]
         else
             error("No calibration data found in the file.")
         end
@@ -182,10 +184,10 @@ function prompt_blade_measurement(saving_path, density_matrix_path, n_masks,
         img = capture(camera)
         blade_pos = find_blade_position(img)
         display_img_and_vline(img, blade_pos)
-        normalized_blade_pos = normalized_position(blade_pos, fit_param[1], fit_param[3])
+        normalized_blade_pos = normalized_position(x[blade_pos], fit_param[1], fit_param[3])
         println("Normalized blade position: $normalized_blade_pos")
 
-        basis_functions = positive_l_basis(2, [0, 0, w, 1])
+        basis_functions = positive_l_basis(2, [0, 0, γ, 1])
         ρs = h5open(density_matrix_path) do file
             file["labels_dim$(length(basis_functions))"] |> read
         end

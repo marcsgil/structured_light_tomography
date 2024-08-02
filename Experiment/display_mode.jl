@@ -17,8 +17,7 @@ y = LinRange(-height / 2, height / 2, resY)
 
 incoming = hg(x, y, γ=2.3f0)
 ##
-x₀ = -2f0γ
-desired = lg(x .-x₀, y; γ, p=1)
+desired = lg(x, y; γ, l=2)
 holo = generate_hologram(desired, incoming, x, y, 
 max_modulation, x_period, y_period)
 update_hologram(slm, holo)

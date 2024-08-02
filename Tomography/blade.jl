@@ -6,17 +6,17 @@ fit_param, x, y = h5open("Data/Raw/blade.h5") do file
     read(obj), attrs(obj)["x"], attrs(obj)["y"]
 end
 
-fit_param[3] = fit_param[3] / √2
+fit_param[3] = fit_param[3]
 
 images, ρs, par = h5open("Data/Raw/blade.h5") do file
-    obj = file["images_5"]
+    obj = file["images_1"]
 
     read(obj), attrs(obj)["density_matrices"], attrs(obj)["par"]
 end
 
 relu(x, y) = x > y ? x - y : zero(x)
 
-treated_images = [relu(x, 0x02) for x ∈ images]
+treated_images = [relu(x, 0x03) for x ∈ images]
 
 _basis = positive_l_basis(2, fit_param[1:4])
 basis = [(x, y) -> f(x, y) * (x < par[1]) for f ∈ _basis]
@@ -32,9 +32,10 @@ for n ∈ axes(treated_images, 3)
     fids[n] = fidelity(ρs[:, :, n], σ)
 end
 
+fids
 mean(fids)
 ##
 n = 10
 visualize(treated_images[:, :, n])
 
-visualize([real(tr(ρs[:,:,n] * Π)) for Π ∈ povm])
+visualize([real(tr(ρs[:, :, n] * Π)) for Π ∈ povm])

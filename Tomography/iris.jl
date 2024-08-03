@@ -1,7 +1,7 @@
 using BayesianTomography, HDF5, PositionMeasurements, ProgressMeter, LinearAlgebra
 includet("../Utils/basis.jl")
 
-path = "Data/Raw/iris.h5"
+path = "Data/Raw/Old/iris.h5"
 
 fit_param, x, y = h5open(path) do file
     obj = file["fit_param"]
@@ -9,12 +9,12 @@ fit_param, x, y = h5open(path) do file
 end
 
 images, ρs, par = h5open(path) do file
-    obj = file["images_1"]
+    obj = file["images_5"]
 
     read(obj), attrs(obj)["density_matrices"], attrs(obj)["par"]
 end
 
-fit_param[3] = fit_param[3] / √2
+@show par
 
 relu(x, y) = x > y ? x - y : zero(x)
 
@@ -26,7 +26,7 @@ y₀ = fit_param[2]
 basis = [(x, y) -> f(x, y) * ((x - x₀)^2 + (y - y₀)^2 < par[1]^2) for f ∈ _basis]
 
 povm = assemble_position_operators(x, y, basis)
-##
+
 mthd = LinearInversion(povm)
 
 fids = Vector{Float64}(undef, size(treated_images, 3))

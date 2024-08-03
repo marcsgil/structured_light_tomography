@@ -12,8 +12,8 @@ function surface_fit(model, x, y, data, p0)
 end
 
 function gaussian_model(x, y, p)
-    x₀, y₀, γ, α, amplitude, offset = p
-    offset + amplitude * abs2(hg(x - x₀, α * (y - y₀); γ))
+    x₀, y₀, w, α, amplitude, offset = p
+    offset + amplitude * abs2(hg(x - x₀, α * (y - y₀); w))
 end
 
 function blade_model(x, y, p)
@@ -23,8 +23,8 @@ function blade_model(x, y, p)
 end
 
 function iris_model(x, y, param, p, l, radius)
-    x₀, y₀, γ, α, amplitude, offset = param
+    x₀, y₀, w, α, amplitude, offset = param
 
     (offset + amplitude * ((x - x₀)^2 + (y - y₀)^2 < radius[1]^2) *
-              abs2(lg(x - x₀, α * (y - y₀); γ, p, l)))
+              abs2(lg(x - x₀, α * (y - y₀); w, p, l)))
 end

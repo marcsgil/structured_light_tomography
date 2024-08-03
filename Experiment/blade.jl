@@ -1,65 +1,57 @@
-using SpatialLightModulator, StructuredLight, ProgressMeter, PartiallyCoherentSources
-using HDF5, BayesianTomography, LinearAlgebra, Tullio
-includet("ximea.jl")
+using SpatialLightModulator, StructuredLight, HDF5
+
+includet("AcquisitionUtils/capture_func.jl")
 includet("../Utils/basis.jl")
-includet("../Utils/model_fitting.jl")
-includet("../Utils/capture.jl")
+
 slm = SLM()
 ##
 width = 15.36f0
 height = 8.64f0
 resX = 1920
 resY = 1080
-γ = 0.15f0
+w = 0.2
 max_modulation = 82
 x_period = 5
 y_period = 4
 
-x = LinRange(-width / 2, width / 2, resX)
-y = LinRange(-height / 2, height / 2, resY)
-#x = centralized_cut(X, 300)
-#y = centralized_cut(Y, 300)
+X = LinRange(-width / 2, width / 2, resX)
+Y = LinRange(-height / 2, height / 2, resY)
+x = centralized_cut(X, 300)
+y = centralized_cut(Y, 300)
 
-incoming = hg(x, y, γ=1.6f0)
-desired = lg(x, y; γ, p=1)
-holo = generate_hologram(desired, incoming, x, y,
-    max_modulation, x_period, y_period)
+incoming = hg(x, y, w=2.3f0)
+
+config = (; width, height, resX, resY, max_modulation, x_period, y_period, incoming, x, y)
+##
+desired = hg(x, y; w, m=1)
+holo = generate_hologram(desired, incoming, x, y, max_modulation, x_period, y_period)
 update_hologram(slm, holo)
 ##
+includet("AcquisitionUtils/ximea.jl")
 camera = XimeaCamera(
     "downsampling" => "XI_DWN_2x2",
     "width" => 200,
     "height" => 200,
-    "offsetX" => 204,
-    "offsetY" => 54,
-    "exposure" => 2000,
+    "offsetX" => 296,
+    "offsetY" => 142,
+    "exposure" => 11150,
 )
 using CairoMakie
 ##
-saving_path = "Data/Raw/blade.h5"
-density_matrix_path = "Data/template.h5"
+saving_path = "../Data/Raw/test.h5"
+
+n_masks = 300
+
+basis_functions = positive_l_basis(2, [0, 0, w, 1])
+
+ρs = h5open("../Data/template.h5") do file
+    file["labels_dim2"][:, :, 1:5]
+end
 ##
-get_calibration(saving_path, incoming, x, y, γ, max_modulation, x_period, y_period, camera, slm)
+prompt_calibration(saving_path, w, camera, slm, config)
 
-prompt_blade_measurement(saving_path, density_matrix_path, 200,
-    incoming, x, y, γ, max_modulation, x_period, y_period, camera, slm; sleep_time=0.15)
+prompt_blade_measurement(saving_path, ρs, n_masks, w, camera, slm, config; sleep_time=0.05)
 ##
-
-visualize(capture(camera))
-
 h5open(saving_path) do file
-    #display(visualize(file["calibration"] |> read))
-    #display(visualize(file["images_1"][:, :, 6]))
-    #file["fit_param"] |> read
     @show keys(file)
-end
-##
-imgs = h5open(saving_path) do file
-    file["images_1"] |> read
-end
-
-visualize(imgs[:, :, 3])
-##
-h5open(saving_path, "cw") do file
-    delete_object(file, "images_1")
 end

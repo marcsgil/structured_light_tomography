@@ -1,46 +1,45 @@
-using BayesianTomography, HDF5, PositionMeasurements, ProgressMeter, LinearAlgebra
+using BayesianTomography, HDF5, ProgressMeter, LinearAlgebra
 using CairoMakie
 includet("../Utils/basis.jl")
-
-fit_param, x, y = h5open("Data/Raw/Old/blade.h5") do file
-    obj = file["fit_param"]
-    read(obj), attrs(obj)["x"], attrs(obj)["y"]
-end
-
-images, ρs, par = h5open("Data/Raw/Old/blade.h5") do file
-    obj = file["images_3"]
-
-    read(obj), attrs(obj)["density_matrices"], attrs(obj)["par"]
-end
-
-@show par
+includet("../Utils/position_operators.jl")
 
 relu(x, y) = x > y ? x - y : zero(x)
 
-treated_images = [relu(x, 0x03) for x ∈ images]
-
-_basis = positive_l_basis(2, fit_param[1:4])
-basis = [(x, y) -> f(x, y) * (x < par[1]) for f ∈ _basis]
-
-povm = assemble_position_operators(x, y, basis)
-
-mthd = LinearInversion(povm)
-
-fids = Vector{Float64}(undef, size(treated_images, 3))
-
-for n ∈ axes(images, 3)
-    σ, _ = prediction(Float32.(images[:, :, n]), mthd)
-    fids[n] = fidelity(ρs[:, :, n], σ)
+function load_data(path, key)
+    h5open(path) do file
+        obj = file[key]
+        read(obj), attrs(obj)["density_matrices"], attrs(obj)["par"]
+    end
 end
 
-fids
-mean(fids)
+function get_povm(x, y, cutoff, fit_param)
+    basis = [(x, y) -> f(x, y) * (x < cutoff) for f ∈ positive_l_basis(2, fit_param[1:4])]
+    assemble_position_operators(x, y, basis)
+end
+
+path = "Data/Raw/Old/blade.h5"
+
+fit_param, x, y = h5open(path) do file
+    obj = file["fit_param"]
+    read(obj), attrs(obj)["x"], attrs(obj)["y"]
+end
 ##
-n = 5
-visualize(images[:, :, n])
+N = 5
 
-visualize([real(tr(ρs[:, :, n] * Π)) for Π ∈ povm])
+fids = Matrix{Float64}(undef, 100, N)
 
-h5open("Data/Raw/blade.h5") do file
-    read(file["calibration"])
-end |> visualize
+for n ∈ 1:N
+    images, ρs, par = load_data(path, "images_$n")
+
+    map!(x -> relu(x, 0x02), images, images)
+
+    povm = get_povm(x, y, x[Int(par[1])], fit_param)
+    mthd = LinearInversion(povm)
+
+    for m ∈ axes(images, 3)
+        σ, _ = prediction(Float32.(images[:, :, m]), mthd)
+        fids[m, n] = fidelity(ρs[:, :, m], σ)
+    end
+end
+
+mean(fids, dims=1)

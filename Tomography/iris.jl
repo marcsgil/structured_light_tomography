@@ -1,5 +1,24 @@
-using BayesianTomography, HDF5, PositionMeasurements, ProgressMeter, LinearAlgebra
+using BayesianTomography, HDF5, ProgressMeter, LinearAlgebra
+using CairoMakie
 includet("../Utils/basis.jl")
+includet("../Utils/position_operators.jl")
+
+relu(x, y) = x > y ? x - y : zero(x)
+
+function load_data(path, key)
+    h5open(path) do file
+        obj = file[key]
+        read(obj), attrs(obj)["density_matrices"], attrs(obj)["par"]
+    end
+end
+
+function get_povm(x, y, cutoff, fit_param)
+    x₀ = fit_param[1]
+    y₀ = fit_param[2]
+    basis = [(x, y) -> f(x, y) * ((x - x₀)^2 + (y - y₀)^2 < cutoff^2)
+             for f ∈ positive_l_basis(2, fit_param[1:4])]
+    assemble_position_operators(x, y, basis)
+end
 
 path = "Data/Raw/Old/iris.h5"
 
@@ -7,43 +26,29 @@ fit_param, x, y = h5open(path) do file
     obj = file["fit_param"]
     read(obj), attrs(obj)["x"], attrs(obj)["y"]
 end
-
-images, ρs, par = h5open(path) do file
-    obj = file["images_5"]
-
-    read(obj), attrs(obj)["density_matrices"], attrs(obj)["par"]
-end
-
-@show par
-
-relu(x, y) = x > y ? x - y : zero(x)
-
-treated_images = [relu(x, 0x02) for x ∈ images]
-
-_basis = positive_l_basis(2, fit_param[1:4])
-x₀ = fit_param[1]
-y₀ = fit_param[2]
-basis = [(x, y) -> f(x, y) * ((x - x₀)^2 + (y - y₀)^2 < par[1]^2) for f ∈ _basis]
-
-povm = assemble_position_operators(x, y, basis)
-
-mthd = LinearInversion(povm)
-
-fids = Vector{Float64}(undef, size(treated_images, 3))
-
-for n ∈ axes(treated_images, 3)
-    σ, _ = prediction(Float32.(treated_images[:, :, n]), mthd)
-    fids[n] = fidelity(ρs[:, :, n], σ)
-end
-
-mean(fids)
 ##
-using CairoMakie
-visualize(treated_images[:, :, 2])
-ρ = ρs[:, :, 1]
-σ = prediction(images[:, :, 1], mthd)[1]
+N = 5
 
-visualize([real(tr(ρ * Π)) for Π ∈ povm])
+fids = Matrix{Float64}(undef, 100, N)
+pars = Vector{Float64}(undef, N)
 
-sum(Int, images[:, :, 1])
+for n ∈ 1:N
+    images, ρs, par = load_data(path, "images_$n")
+
+    pars[n] = par[2]
+
+    map!(x -> relu(x, 0x02), images, images)
+
+    povm = get_povm(x, y, par[1], fit_param)
+    mthd = LinearInversion(povm)
+
+    for m ∈ axes(images, 3)
+        σ, _ = prediction(Float32.(images[:, :, m]), mthd)
+        fids[m, n] = fidelity(ρs[:, :, m], σ)
+    end
+end
 ##
+I = sortperm(pars)
+pars[I]
+
+mean(fids, dims=1)[I]

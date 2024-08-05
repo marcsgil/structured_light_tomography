@@ -2,6 +2,7 @@ using BayesianTomography, HDF5, ProgressMeter, LinearAlgebra
 using CairoMakie
 includet("../Utils/basis.jl")
 includet("../Utils/position_operators.jl")
+includet("../Utils/obstructed_measurements.jl")
 
 relu(x, y) = x > y ? x - y : zero(x)
 
@@ -12,20 +13,14 @@ function load_data(path, key)
     end
 end
 
-function get_povm(x, y, cutoff, fit_param)
-    x₀ = fit_param[1]
-    y₀ = fit_param[2]
-    basis = [(x, y) -> f(x, y) * ((x - x₀)^2 + (y - y₀)^2 < cutoff^2)
-             for f ∈ positive_l_basis(2, fit_param[1:4])]
-    assemble_position_operators(x, y, basis)
-end
-
 path = "Data/Raw/Old/iris.h5"
 
 fit_param, x, y = h5open(path) do file
     obj = file["fit_param"]
     read(obj), attrs(obj)["x"], attrs(obj)["y"]
 end
+
+basis = positive_l_basis(2, fit_param[1:4])
 ##
 N = 5
 
@@ -39,7 +34,9 @@ for n ∈ 1:N
 
     map!(x -> relu(x, 0x02), images, images)
 
-    povm = get_povm(x, y, par[1], fit_param)
+    obstructed_basis = get_obstructed_basis(basis, iris_obstruction, fit_param[1], fit_param[2], par[1])
+    povm, ρs = get_proper_povm_and_states(x, y, ρs, obstructed_basis)
+
     mthd = LinearInversion(povm)
 
     for m ∈ axes(images, 3)
@@ -47,6 +44,8 @@ for n ∈ 1:N
         fids[m, n] = fidelity(ρs[:, :, m], σ)
     end
 end
+
+mean(fids, dims=1)
 ##
 I = sortperm(pars)
 pars[I]

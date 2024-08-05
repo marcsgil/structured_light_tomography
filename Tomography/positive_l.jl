@@ -1,5 +1,6 @@
-using BayesianTomography, HDF5, PositionMeasurements, ProgressMeter, LinearAlgebra
+using BayesianTomography, HDF5, ProgressMeter, LinearAlgebra
 includet("../Utils/basis.jl")
+includet("../Utils/position_operators.jl")
 
 file = h5open("Data/Processed/positive_l.h5")
 fit_param = read(file["fit_param"])

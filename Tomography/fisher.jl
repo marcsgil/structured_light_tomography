@@ -1,31 +1,55 @@
-using BayesianTomography, StructuredLight, LinearAlgebra, CairoMakie
+using StructuredLight, LinearAlgebra, CairoMakie, ProgressMeter
 includet("../Utils/position_operators.jl")
 includet("../Utils/basis.jl")
+includet("../Utils/obstructed_measurements.jl")
+
+import BayesianTomography: ProductMeasure, LinearInversion
+
+function fisher_information!(dest, probs::AbstractVector, C::AbstractMatrix)
+    for I ∈ eachindex(IndexCartesian(), dest)
+        tmp = zero(eltype(dest))
+        for k ∈ eachindex(probs)
+            tmp += C[k, I[1]] * C[k, I[2]] / probs[k]
+        end
+        dest[I] = tmp
+    end
+end
 ##
 rs = Base.oneto(200)
 x₀ = length(rs) ÷ 2
 y₀ = length(rs) ÷ 2
 w = length(rs) ÷ 8
 
-_basis = positive_l_basis(2, [x₀, y₀, w, 1])
+basis = positive_l_basis(2, [x₀, y₀, w, 1])
 ##
-cutoffs = LinRange(x₀ - 2.5w, x₀ + 2.5w, 32)
+
+
+##
+cutoffs = LinRange(x₀ - w, x₀ + 2.5w, 16)
 
 N = 10^3
-d = length(_basis)
+d = length(basis)
 ρs = sample(ProductMeasure(d), N)
 
+Is = Array{Float32,4}(undef, d^2 - 1, d^2 - 1, N, length(cutoffs))
 
-Is = Array{Float32,3}(undef, d^2 - 1, d^2 - 1, length(cutoffs))
+@showprogress for n ∈ eachindex(cutoffs)
+    obstructed_basis = get_obstructed_basis(basis, blade_obstruction, cutoffs[n])
 
-for n ∈ eachindex(cutoffs)
-    basis = [(x, y) -> f(x, y) * (x < cutoffs[n]) for f ∈ _basis]
-    povm = assemble_position_operators(rs, rs, basis)
-    visualize([real(tr(ρs[:, :, 1] * Π)) for Π ∈ povm]) |> display
-    Is[:, :, n] = mean(fisher_information(ρs, povm), dims=3)
+    povm, ρs = get_proper_povm_and_states(rs, rs, ρs, obstructed_basis)
+    filtered_povm = filter(Π -> !iszero(Π), povm)
+
+    C = LinearInversion(povm).C
+
+    for (m, ρ) ∈ enumerate(eachslice(ρs, dims=3))
+        probs = vec([real(ρ ⋅ Π) for Π in filtered_povm])
+        fisher_information!(view(Is, :, :, m, n), probs, C)
+    end
 end
 
-inv_Is = mapslices(inv, Is, dims=(1, 2))
+mean_Is = dropdims(mean(Is, dims=3), dims=3)
+
+inv_Is = mapslices(inv, mean_Is, dims=(1, 2))
 diag_inv_Is = dropdims(mapslices(diag, inv_Is, dims=(1, 2)), dims=2)
 ##
 with_theme(theme_latexfonts()) do
@@ -33,9 +57,9 @@ with_theme(theme_latexfonts()) do
     ax = Axis(fig[1, 1],
         xlabel="Blade position (waist)",
         ylabel="Average inverse Fisher information",
-        yscale=log2,
-        yticks=[2^n for n ∈ 0:13],
-        xticks=-1:0.5:2.5,
+        #yscale=log2,
+        #yticks=[2^n for n ∈ 0:13],
+        xticks=-2:0.5:2.5,
     )
     #yscale=log10)
     #ylims!(ax, 1, 100)
@@ -58,9 +82,8 @@ d = length(_basis)
 Is = Array{Float32,3}(undef, d^2 - 1, d^2 - 1, length(cutoffs))
 
 for (n, cutoff) ∈ enumerate(cutoffs)
-    basis = [(x, y) -> f(x, y) * ((x-x₀)^2 + (y-y₀)^2 ≤ cutoffs[n]^2) for f ∈ _basis]
-    povm = assemble_position_operators(rs, rs, basis)
-    visualize([real(tr(ρs[:, :, 1] * Π)) for Π ∈ povm]) |> display
+    obstructed_basis = get_obstructed_basis(basis, iris_obstruction, x₀, y₀, cutoffs[n])
+    povm, ρs = get_proper_povm_and_states(rs, rs, ρs, obstructed_basis)
     Is[:, :, n] = mean(fisher_information(ρs, povm), dims=3)
 end
 

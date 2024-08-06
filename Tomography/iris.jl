@@ -51,3 +51,12 @@ I = sortperm(pars)
 pars[I]
 
 mean(fids, dims=1)[I]
+##
+n = I[1]
+
+images, ρs, par = load_data(path, "images_$n")
+
+
+visualize(images[:,:,17])
+
+sum(Int, images[:,:,17])

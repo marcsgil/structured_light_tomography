@@ -50,3 +50,45 @@ function get_proper_povm_and_states(x, y, ρs, basis)
     povm = assemble_position_operators(x, y, orthonormal_basis)
     povm, stack(ρ -> transform_state(U, ρ), eachslice(ρs, dims=3))
 end
+
+function get_intensity(ρ, basis_func, x, y)
+    map(Iterators.product(x, y)) do r
+        v = [f(r...) for f ∈ basis_func]
+        real(dot(v, ρ, v))
+    end
+end
+##
+using BayesianTomography, LinearAlgebra, StructuredLight, CairoMakie
+includet("../Utils/basis.jl")
+includet("../Utils/position_operators.jl")
+
+function test_obstructed_measurement()
+    rs = Base.oneto(200)
+    x₀ = length(rs) ÷ 2
+    y₀ = length(rs) ÷ 2
+    w = length(rs) ÷ 8
+
+    basis = positive_l_basis(2, [x₀, y₀, w, 1])
+    d = length(basis)
+    ρs = sample(ProductMeasure(d), 1)
+
+    obstructed_basis = get_obstructed_basis(basis, iris_obstruction, x₀, y₀, 0.5w)
+
+    G = gram_matrix(obstructed_basis, rs, rs)
+    U = cholesky(G).U
+    P = inv(U)
+
+    orthonormal_basis = [linear_combinations(obstructed_basis, c) for c ∈ eachcol(P)]
+
+    new_ρs = stack(ρ -> transform_state(U, ρ), eachslice(ρs, dims=3))
+
+    for (ρ, new_ρ) ∈ zip(eachslice(ρs, dims=3), eachslice(new_ρs, dims=3))
+        I1 = get_intensity(new_ρ, orthonormal_basis, rs, rs)
+        I2 = get_intensity(ρ, obstructed_basis, rs, rs)
+        factor = real(tr(ρ * G))
+
+        @assert !(I1 * factor ≈ I2)
+    end
+end
+
+test_obstructed_measurement()

@@ -87,7 +87,7 @@ function test_obstructed_measurement()
         I2 = get_intensity(ρ, obstructed_basis, rs, rs)
         factor = real(tr(ρ * G))
 
-        @assert !(I1 * factor ≈ I2)
+        @assert I1 * factor ≈ I2
     end
 end
 

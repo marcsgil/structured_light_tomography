@@ -34,6 +34,10 @@ function iris_obstruction(x, y, x₀, y₀, radius)
     (x - x₀)^2 + (y - y₀)^2 < radius^2
 end
 
+function inverse_iris_obstruction(x, y, x₀, y₀, radius)
+    !iris_obstruction(x, y, x₀, y₀, radius)
+end
+
 function get_obstructed_basis(basis, obstruction_func, args...; kwargs...)
     map(basis) do f
         (x, y) -> f(x, y) * obstruction_func(x, y, args...; kwargs...)
@@ -53,7 +57,7 @@ end
 
 function get_intensity(ρ, basis_func, x, y)
     map(Iterators.product(x, y)) do r
-        v = [f(r...) for f ∈ basis_func]
+        v = [conj(f(r...)) for f ∈ basis_func]
         real(dot(v, ρ, v))
     end
 end

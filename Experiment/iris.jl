@@ -14,10 +14,10 @@ max_modulation = 82
 x_period = 5
 y_period = 4
 
-x = LinRange(-width / 2, width / 2, resX)
-y = LinRange(-height / 2, height / 2, resY)
-#x = centralized_cut(X, 300)
-#y = centralized_cut(Y, 300)
+X = LinRange(-width / 2, width / 2, resX)
+Y = LinRange(-height / 2, height / 2, resY)
+x = centralized_cut(X, 300)
+y = centralized_cut(Y, 300)
 
 incoming = hg(x, y, w=2.3f0)
 
@@ -32,20 +32,18 @@ camera = XimeaCamera(
     "downsampling" => "XI_DWN_2x2",
     "width" => 200,
     "height" => 200,
-    "offsetX" => 56,
-    "offsetY" => 252,
-    "exposure" => 11150,
+    "offsetX" => 64,
+    "offsetY" => 20,
+    "exposure" => 4000,
 )
 using CairoMakie
 ##
-saving_path = "../Data/Raw/test.h5"
+saving_path = "../Data/Raw/test_iris.h5"
 
-n_masks = 300
-
-basis_functions = positive_l_basis(2, [0, 0, w, 1])
+n_masks = 200
 
 ρs = h5open("../Data/template.h5") do file
-    file["labels_dim2"][:, :, 1:5]
+    file["labels_dim2"][:, :, 1:3]
 end
 ##
 prompt_calibration(saving_path, w, camera, slm, config)

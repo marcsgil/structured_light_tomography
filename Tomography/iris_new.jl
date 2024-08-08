@@ -55,38 +55,38 @@ fids
 
 mean(fids, dims=1)
 ##
-images, ρs = load_data(path, "image_1")
+images, ρs = h5open("Data/Raw/mixed_intense.h5") do file
+    read(file["images_order1"]), read(file["labels_order1"])
+end
 
-calibration = h5open(path) do file
+calibration = h5open("Data/Raw/mixed_intense.h5") do file
     file["calibration"] |> read
 end
 
-#x = LinRange(-0.5, 0.5, size(calibration, 1))
-#y = LinRange(-0.5, 0.5, size(calibration, 2))
+x = LinRange(-0.5, 0.5, size(calibration, 1))
+y = LinRange(-0.5, 0.5, size(calibration, 2))
 
-#p0 = Float64.([0, 0, 0.1, 1, maximum(calibration), minimum(calibration)])
+p0 = Float64.([0, 0, 0.1, 1, maximum(calibration), minimum(calibration)])
 
-x = axes(calibration,1)
+"""x = axes(calibration,1)
 y = axes(calibration, 2)
 x₀ = size(calibration, 1) ÷ 2
 y₀ = size(calibration, 2) ÷ 2
 
 w = x₀ ÷ 4
 
-p0 = [x₀, y₀, w, 1., maximum(calibration), minimum(calibration)]
+p0 = [x₀, y₀, w, 1., maximum(calibration), minimum(calibration)]"""
 
-fit = surface_fit(gaussian_model, x, y, calibration, p0)
+fit = surface_fit(gaussian_model, x, y, calibration[:,:,1], p0)
 
-new_fit_param = copy(fit.param)
-new_fit_param[3] /= 1.2
-basis = positive_l_basis(2, new_fit_param)
+basis = fixed_order_basis(1, fit.param) |> reverse
 ##
-visualize(calibration) |> display
+visualize(calibration[:,:,1]) |> display
 
 visualize([gaussian_model(x, y, fit.param) for x ∈ x, y ∈ y]) |> display
 ##
-n = 3
-visualize(images[:, :, n]) |> display
+n = 11
+visualize(images[:, :, 1, n]) |> display
 visualize(get_intensity(ρs[:, :, n], basis, x, y))  |> display
 ##
 visualize(abs2.(lg(x.-new_fit_param[1], y .- new_fit_param[2], w=fit.param[3], l=2)))

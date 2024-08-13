@@ -14,11 +14,11 @@ function loop_capture!(img_buffer, desireds, camera, slm, config; sleep_time=0.1
     max_modulation = config.max_modulation
     x_period = config.x_period
     y_period = config.y_period
-    
+    dest = centralized_cut(slm.image, (size(desireds, 1), size(desireds, 2)))
 
     @showprogress for (desired, img) ∈ zip(s1, s2)
-        holo = generate_hologram(desired, incoming, x, y, max_modulation, x_period, y_period, Simple)
-        update_hologram(slm, holo; sleep_time)
+        generate_hologram!(dest, desired, incoming, x, y, max_modulation, x_period, y_period)
+        update_hologram!(slm; sleep_time)
         capture!(img, camera)
     end
 end
@@ -129,8 +129,8 @@ function display_calibration(w, slm, config)
     y_period = config.y_period
 
     desired = hg(x, y; w)
-    holo = generate_hologram(desired, incoming, x, y, max_modulation, x_period, y_period, Simple)
-    update_hologram(slm, holo)
+    holo = generate_hologram(desired, incoming, x, y, max_modulation, x_period, y_period)
+    update_hologram!(slm, holo)
 end
 
 function prompt_calibration(saving_path, w, camera, slm, config)
@@ -253,7 +253,6 @@ function display_img_and_circle(img, radius, x, y, x₀, y₀)
 end
 
 function prompt_iris_measurement(saving_path, ρs, n_masks, w, camera, slm, config; sleep_time=0.15)
-
     incoming = config.incoming
     x = config.x
     y = config.y
@@ -265,8 +264,8 @@ function prompt_iris_measurement(saving_path, ρs, n_masks, w, camera, slm, conf
     p = 0
 
     desired = lg(x, y; w, p, l)
-    holo = generate_hologram(desired, incoming, x, y, max_modulation, x_period, y_period, Simple)
-    update_hologram(slm, holo)
+    holo = generate_hologram(desired, incoming, x, y, max_modulation, x_period, y_period)
+    update_hologram!(slm, holo)
 
     fit_param, x, y = h5open(saving_path) do file
         if "calibration" ∈ keys(file)
@@ -279,6 +278,8 @@ function prompt_iris_measurement(saving_path, ρs, n_masks, w, camera, slm, conf
 
     x₀ = fit_param[1]
     y₀ = fit_param[2]
+
+    img = capture(camera)
 
     should_quit = false
     while !should_quit
@@ -299,5 +300,11 @@ function prompt_iris_measurement(saving_path, ρs, n_masks, w, camera, slm, conf
             saving_path, saving_name,
             basis_functions, ρs, n_masks, camera, slm, config;
             sleep_time, par=[radius, normalized_radius])
+
+        if should_quit
+            h5open(saving_path, "cw") do file
+                attrs(file[saving_name])["iris_calibration"] = img
+            end
+        end
     end
 end

@@ -10,11 +10,11 @@ relu(x, y) = x > y ? x - y : zero(x)
 function load_data(path, key)
     h5open(path) do file
         obj = file[key]
-        read(obj), attrs(obj)["density_matrices"]
+        read(obj), attrs(obj)["density_matrices"], attrs(obj)["par"]
     end
 end
 
-path = "Data/Raw/test_python_4.h5"
+path = "Data/Raw/test_julia.h5"
 
 calibration = h5open(path) do file
     file["calibration"] |> read
@@ -31,38 +31,37 @@ y = LinRange(-0.5, 0.5, size(calibration, 2))
 p0 = Float64.([0, 0, 0.1, 1, maximum(calibration), minimum(calibration)])
 fit = surface_fit(simple_model, x, y, calibration, p0)
 
-
+fit.param
 basis = positive_l_basis(2, fit.param)
 ##
 N = 1
 
-fids = Matrix{Float64}(undef, 50, N)
+fids = Matrix{Float64}(undef, 3, N)
 pars = Vector{Float64}(undef, N)
 
-for n ∈ 1:N
-    images, ρs = load_data(path, "images_$n")
+for n ∈ 1
+    images, ρs, par = load_data(path, "images_1")
 
     #pars[n] = par[2]
 
-    obstructed_basis = get_obstructed_basis(basis, iris_obstruction, 0, 0,0.5)
-    povm, ρs = get_proper_povm_and_states(x, y, ρs, obstructed_basis)
+    obstructed_basis = get_obstructed_basis(basis, iris_obstruction, fit.param[1], fit.param[2], 0.9*par[1])
+    povm, new_ρs = get_proper_povm_and_states(x, y, ρs, obstructed_basis)
 
-    map!(x -> relu(x, 0x04), images, images)
+    map!(x -> relu(x, 0x03), images, images)
     #povm = assemble_position_operators(x, y, basis)
     mthd = LinearInversion(povm)
 
     for m ∈ axes(images, 3)
         σ, _ = prediction(Float32.(images[:, :, m]), mthd)
-        fids[m, n] = fidelity(conj.(ρs[:, :, m]), σ)
+        fids[m, n] = fidelity(new_ρs[:, :, m], σ)
     end
 end
 
 fids
 
-argmin(fids)
 mean(fids, dims=1)
 ##
-images, ρs = load_data(path, "images_1")
+images, ρs, par = load_data(path, "images_1")
 
 calibration = h5open(path) do file
     file["calibration"] |> read
@@ -75,15 +74,17 @@ p0 = Float64.([0, 0, 0.1, 1, maximum(calibration), minimum(calibration)])
 
 fit = surface_fit(gaussian_model, x, y, calibration[:,:,1], p0)"""
 
-basis = positive_l_basis(2, new_fit_param)
+basis = positive_l_basis(2, fit.param)
+obstructed_basis = get_obstructed_basis(basis, iris_obstruction, 0, fit.param[2], 0.9 * par[1])
+povm, new_ρs = get_proper_povm_and_states(x, y, ρs, obstructed_basis)
 ##
 visualize(calibration[:, :, 1]) |> display
 
 visualize([gaussian_model(x, y, fit.param) for x ∈ x, y ∈ y]) |> display
 ##
-n = 1
+n = 3
 visualize(images[:, :, n]) |> display
-visualize(get_intensity(conj.(ρs[:, :, n]), basis, x, y)) |> display
+visualize(get_intensity(ρs[:, :, n], obstructed_basis, x, y)) |> display
 ##
 visualize(abs2.(lg(x .- new_fit_param[1], y .- new_fit_param[2], w=fit.param[3], l=2)))
 ##

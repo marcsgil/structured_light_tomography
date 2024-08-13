@@ -4,6 +4,7 @@ import SpatialLightModulator: centralized_cut
 includet("AcquisitionUtils/ximea.jl")
 includet("AcquisitionUtils/capture_func.jl")
 includet("../Utils/basis.jl")
+includet("../Utils/basis.jl")
 
 slm = SLM()
 ##
@@ -25,7 +26,7 @@ incoming = hg(x, y, w=2.3f0)
 
 config = (; width, height, resX, resY, max_modulation, x_period, y_period, incoming, x, y)
 ##
-desired = lg(x, y; w, l=2)
+desired = hg(x, y; w, m=8, n=8)
 holo = generate_hologram(desired, incoming, x, y, max_modulation, x_period, y_period)
 update_hologram!(slm, holo)
 ##
@@ -38,17 +39,22 @@ camera = XimeaCamera(
     "exposure" => 15,
 )
 ##
-saving_path = "../Data/Raw/test_julia.h5"
+visualize(capture(camera))
+##
+saving_path = "../Data/Raw/postive_l_new.h5"
 
 n_masks = 200
-
-ρs = h5open("../Data/template.h5") do file
-    file["labels_dim2"][:, :, 1:3]
-end
 ##
 prompt_calibration(saving_path, w, camera, slm, config)
-
-prompt_iris_measurement(saving_path, ρs, n_masks, w, camera, slm, config; sleep_time=0.05)
+##
+for dim ∈ 2:6
+    @info "Starting with dim = $dim"
+    basis_functions = positive_l_basis(dim, [0, 0, w, 1])
+    ρs = h5open("../Data/template.h5") do file
+        file["labels_dim$dim"][:, :, 1:100]
+    end
+    save_basis_loop(saving_path, "images_dim$dim", basis_functions, ρs, n_masks, camera, slm, config; sleep_time=0.05)
+end
 ##
 h5open(saving_path) do file
     @show keys(file)

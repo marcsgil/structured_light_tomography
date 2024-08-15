@@ -2,7 +2,7 @@
 
 julia_version = "1.10.4"
 manifest_format = "2.0"
-project_hash = "e38ba5a5c9a4cc694019279928e69c2faa510fb8"
+project_hash = "a4276763d100bd4033dfdbc0289672aeb8f9d3d6"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -817,9 +817,9 @@ version = "3.0.3+0"
 
 [[deps.KernelAbstractions]]
 deps = ["Adapt", "Atomix", "InteractiveUtils", "LinearAlgebra", "MacroTools", "PrecompileTools", "Requires", "SparseArrays", "StaticArrays", "UUIDs", "UnsafeAtomics", "UnsafeAtomicsLLVM"]
-git-tree-sha1 = "0fac59881e91c7233a9b0d47f4b7d9432e534f0f"
+git-tree-sha1 = "d0448cebd5919e06ca5edc7a264631790de810ec"
 uuid = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
-version = "0.9.23"
+version = "0.9.22"
 
     [deps.KernelAbstractions.extensions]
     EnzymeExt = "EnzymeCore"
@@ -1588,9 +1588,9 @@ version = "0.6.18"
 
 [[deps.StructuredLight]]
 deps = ["Bessels", "FFTW", "KernelAbstractions", "LinearAlgebra", "PrecompileTools"]
-git-tree-sha1 = "d3200c88ceadd211d803c12101b662e790a3df51"
+git-tree-sha1 = "12efbe8b5368869493bc78197ce8abc21cd5a94e"
 uuid = "13204c95-a6e5-4c09-8c7b-ee09b09e0944"
-version = "0.4.1"
+version = "0.4.0"
 
     [deps.StructuredLight.extensions]
     StructuredLightCUDAExt = "CUDA"
@@ -1724,9 +1724,9 @@ version = "0.2.1"
 
 [[deps.UnsafeAtomicsLLVM]]
 deps = ["LLVM", "UnsafeAtomics"]
-git-tree-sha1 = "4073c836c2befcb041e5fe306cb6abf621eb3140"
+git-tree-sha1 = "bf2c553f25e954a9b38c9c0593a59bb13113f9e5"
 uuid = "d80eeb9a-aca5-4d75-85e5-170c8b632249"
-version = "0.2.0"
+version = "0.1.5"
 
 [[deps.WoodburyMatrices]]
 deps = ["LinearAlgebra", "SparseArrays"]

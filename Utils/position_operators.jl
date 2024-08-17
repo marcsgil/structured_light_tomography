@@ -24,21 +24,3 @@ function assemble_position_operators(xs, ys, basis)
     return operators
 end
 
-"""function fisher_information!(dest, probs::AbstractVector, C::AbstractMatrix)
-    for I ∈ eachindex(IndexCartesian(), dest)
-        tmp = zero(eltype(dest))
-        for k ∈ eachindex(probs)
-            tmp += C[I[1], k] * C[I[2], k] / probs[k]
-        end
-        dest[I] = tmp
-    end
-end
-
-function fisher_information(ρ, povm)
-    probs = vec([real(ρ ⋅ E) for E in povm])
-    basis = gell_mann_matrices(size(ρ, 1), include_identity=false)
-    C = hcat((real_orthogonal_projection(Π, basis) for Π in povm)...)
-    I = similar(C, size(C, 1), size(C, 1))
-    fisher_information!(I, probs, C)
-    I
-end"""

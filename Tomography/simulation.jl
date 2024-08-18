@@ -4,12 +4,12 @@ includet("../Utils/basis.jl")
 includet("../Utils/obstructed_measurements.jl")
 includet("../Utils/fisher.jl")
 ##
-rs = LinRange(-2f0, 2f0, 512)
+rs = LinRange(-2f0, 2f0, 256)
 
 basis_func = positive_l_basis(2, [0.0f0, 0, 1, 1])
 d = length(basis_func)
 
-θ = Float32(1 / √2) * [1, 0, 0, 0]
+θ = Float32(1 / √2) * [1, 0, 0, 1]
 ρ = linear_combination(θ, gell_mann_matrices(2))
 img = get_intensity(ρ, basis_func, rs, rs)
 normalize!(img, 1)
@@ -21,26 +21,26 @@ T = hcat(p_corr * Float32(√2), _T)
 mthd = BayesianInference(T, Ω)
 ω = gell_mann_matrices(2)
 
-counts = [round(Int, 10^n) for n ∈ LinRange(3, 4, 20)]
+counts = [round(Int, 10^n) for n ∈ LinRange(3, 4, 10)]
 error_clean = Matrix{Float32}(undef, length(counts), 10^2)
 
-I0 = fisher_at(θ, basis_func, Ω, L, ω, rs, _T)
+I0 = fisher_at(θ, basis_func, ω, L, ω, rs, _T)
 ##
 p = Progress(length(error_clean))
 Threads.@threads for n ∈ axes(error_clean, 2)
     for m ∈ axes(error_clean, 1)
         sim = simulate_outcomes(img, counts[m])
         σ, θ_pred, _ = prediction(sim, mthd)
-        #error_clean[m, n] = sum(abs2, ρ - ϕ * ϕ' )
-        #ϕ = project2pure(σ / tr(σ))
-        error_clean[m, n] = sum(abs2, ρ - σ / tr(σ))
+        ϕ = project2pure(σ / tr(σ))
+        error_clean[m, n] = sum(abs2, ρ - ϕ * ϕ' )
+        #error_clean[m, n] = sum(abs2, ρ - σ / tr(σ))
         next!(p)
     end
 end
 
 mean_error_clean = dropdims(mean(error_clean, dims=2), dims=2)
 ##
-obstructed_basis = [(x, y) -> f(x, y) * iris_obstruction(x, y, 0, 0, 0.1f0) for f in basis_func]
+obstructed_basis = [(x, y) -> f(x, y) * iris_obstruction(x, y, 0, 0, .5f0) for f in basis_func]
 
 img = get_intensity(ρ, obstructed_basis, rs, rs)
 normalize!(img, 1)
@@ -57,20 +57,15 @@ mthd = BayesianInference(T, Ω)
 error_ob = similar(error_clean)
 
 
-I_ob = fisher_at(θ, obstructed_basis, Ω, L, ω, rs, _T)
-
-η_func(θ, Ω, L, ω)
-##
-sim = simulate_outcomes(img, 10^4)
-σ, θ_pred, _ = prediction(sim, mthd)
-
-σ / tr(σ)
+I_ob = fisher_at(θ, obstructed_basis, ω, L, ω, rs, _T)
 ##
 p = Progress(length(error_ob))
 Threads.@threads for n ∈ axes(error_ob, 2)
     for m ∈ axes(error_ob, 1)
         sim = simulate_outcomes(img, counts[m])
         σ, θ_pred, _ = prediction(sim, mthd)
+        #ϕ = project2pure(σ / tr(σ))
+        #error_clean[m, n] = sum(abs2, ρ - ϕ * ϕ' )
         error_ob[m, n] = sum(abs2, ρ - σ / tr(σ))
         next!(p)
     end

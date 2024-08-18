@@ -54,10 +54,11 @@ for order in 1:4
 
     # Looks like the coefficients are stored in the reverse order
     out["labels_order$order"] = reverse(read(coeffs["order$order"]), dims=1)
+    #out["labels_order$order"] = reverse(read(coeffs["order$order"]), dims=1)
     for pc ∈ photocounts
         images = Array{UInt8}(undef, (64, 64, 2, size(histories, 2)))
         for n ∈ axes(histories, 2)
-            images[:, :, :, n] = history2array(histories[1:pc, n], (64, 64, 2)) .|> UInt8
+            images[:, :, :, n] = complete_representation(History(histories[1:pc, n]), (64, 64, 2)) .|> UInt8
         end
         out["images_order$order/$(pc)_photocounts"] = images
     end

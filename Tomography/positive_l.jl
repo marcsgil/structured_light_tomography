@@ -17,8 +17,8 @@ fids = Matrix{Float64}(undef, length(dims), 100)
     #povm = assemble_position_operators(rs, rs, basis)
     #mthd = LinearInversion(povm)
 
-    T, Ω, L = assemble_povm_matrix(basis, rs, rs)
-    mthd = LinearInversion(T, pinv(T), Ω)
+    T, Ω, L, p_correction = assemble_povm_matrix(basis, rs, rs)
+    mthd = LinearInversion(T, pinv(T), gell_mann_matrices(dim), p_correction)
 
     ω = gell_mann_matrices(dim)
 
@@ -26,7 +26,7 @@ fids = Matrix{Float64}(undef, length(dims), 100)
     ρs = file["labels_dim$dim"][:, :, :]
 
     for (n, probs) ∈ enumerate(eachslice(images, dims=3))
-        σ, _ = prediction(probs, mthd)
+        σ, θs, _ = prediction(probs, mthd)
         fids[m, n] = fidelity(ρs[:, :, n], σ)
     end
 end

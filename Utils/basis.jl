@@ -13,7 +13,7 @@ function fixed_order_basis(order, pars)
     y₀ = pars[2]
     w = pars[3]
     α = pars[4]
-    [(x, y) -> hg(x - x₀, α * (y - y₀); w, m, n=order - m) for m ∈ 0:order]
+    [(x, y) -> hg(x - x₀, α * (y - y₀); w, m=order - n, n) for n ∈ 0:order]
 end
 
 function only_l_basis(dim, pars)

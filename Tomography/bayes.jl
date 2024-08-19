@@ -18,6 +18,8 @@ coefficients = read(file["labels_order$order"])
 
 basis = fixed_order_basis(order, [0, 0, 1/√2, 1])
 
+
+
 direct_operators = assemble_position_operators(direct_x, direct_y, basis)
 mode_converter = diagm([cis(Float32(k * π / 2)) for k ∈ 0:order])
 astig_operators = assemble_position_operators(converted_x, converted_y, basis)
@@ -28,7 +30,7 @@ mthd = BayesianInference(operators)
 m = 1
 outcomes = complete_representation(History(view(histories, :, m)), (64, 64, 2))
 
-visualize(outcomes)
+#visualize(outcomes)
 
 ρ, _ = prediction(outcomes, mthd)
 ψ = project2pure(ρ)

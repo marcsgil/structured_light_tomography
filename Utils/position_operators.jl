@@ -30,7 +30,7 @@ function gram_matrix(basis, dA)
     @tullio g[j, k] := basis[x, y, j] * conj(basis[x, y, k]) * dA
 end
 
-function assemble_povm_matrix(basis_functions, xs, ys)
+function assemble_povm_matrix(xs, ys, basis_functions)
     dim = length(basis_functions)
     dA = (xs[2] - xs[1]) * (ys[2] - ys[1])
     basis = stack(f(x, y) for x in xs, y in ys, f in basis_functions)
@@ -39,11 +39,8 @@ function assemble_povm_matrix(basis_functions, xs, ys)
     L = cholesky(g).L
     inv_L = inv(L)
     Ω = stack(Hermitian(inv_L' * ω * inv_L) for ω ∈ eachslice(ω, dims=3))
-    @tullio _T[x, y, n] := Ω[r, s, n] * basis[x, y, r] * conj(basis[x, y, s]) * dA |> real
-
-    T = reshape(_T[:, :, begin+1:end], :, size(_T, 3) - 1)
-    p_correction = vec(_T[:, :, begin]) / convert(eltype(T), √dim)
-    T, Ω, L, p_correction
+    @tullio T[x, y, n] := Ω[r, s, n] * basis[x, y, r] * conj(basis[x, y, s]) * dA |> real
+    reshape(T, :, size(T, 3)), Ω, L
 end
 
 function get_intensity!(img, buffer, ρ, basis_func, x, y)
@@ -69,17 +66,17 @@ function η_func(θ, Ω, L, ω)
 end
 
 function η_func_jac(θ, Ωs, L, ωs)
-    transformed_ρ = L' * linear_combination(θ, Ωs) * L
+    T = eltype(θ)
+    dim = size(L, 1)
+    _θ = vcat(convert(T, dim^(-1 // 2)), θ)
+    transformed_ρ = L' * linear_combination(_θ, Ωs) * L
     N = tr(transformed_ρ)
 
     [real(tr(L' * Ω * L * ω) / N - tr(transformed_ρ * ω) * tr(L' * Ω * L) / N^2)
      for ω ∈ eachslice((@view ωs[:, :, begin+1:end]), dims=3), Ω ∈ eachslice((@view Ωs[:, :, begin+1:end]), dims=3)]
 end
 
-function fisher!(F, T, p)
-    I = findall(x -> x > 0, vec(p))
-    @tullio F[i, j] = T[I[k], i] * T[I[k], j] / p[I[k]]
-end
+
 
 function fisher_at(θ, basis_func, Ω, L, ω, rs, T)
     ρ = linear_combination(θ, ω)

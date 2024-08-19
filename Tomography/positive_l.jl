@@ -14,13 +14,8 @@ fids = Matrix{Float64}(undef, length(dims), 100)
 
 @showprogress for (m, dim) ∈ enumerate(dims)
     basis = positive_l_basis(dim, fit_param[1:4])
-    #povm = assemble_position_operators(rs, rs, basis)
-    #mthd = LinearInversion(povm)
-
-    T, Ω, L, p_correction = assemble_povm_matrix(basis, rs, rs)
-    mthd = LinearInversion(T, pinv(T), gell_mann_matrices(dim), p_correction)
-
-    ω = gell_mann_matrices(dim)
+    T, Ω, L = assemble_povm_matrix(basis, rs, rs)
+    mthd = LinearInversion(T, Ω)
 
     images = file["images_dim$dim"][:, :, :]
     ρs = file["labels_dim$dim"][:, :, :]

@@ -1,133 +1,60 @@
-using StructuredLight, LinearAlgebra, CairoMakie, ProgressMeter
+using StructuredLight, LinearAlgebra, CairoMakie, ProgressMeter, BayesianTomography
 includet("../Utils/position_operators.jl")
 includet("../Utils/basis.jl")
 includet("../Utils/obstructed_measurements.jl")
+##
+rs = LinRange(-3.0f0, 3, 256)
+basis_func = positive_l_basis(2, [0.0f0, 0, 1, 1])
+##
+T, Ω, L = assemble_povm_matrix(rs, rs, basis_func)
+mthd = LinearInversion(T, Ω)
 
-import BayesianTomography: ProductMeasure, LinearInversion
+coords = LinRange(-1.0f0, 1, 200)
+inv_sqrt_2 = Float32(1 / √2)
+θs = [[x * inv_sqrt_2, 0, z * inv_sqrt_2] for x in coords, z ∈ coords]
 
-function fisher_information!(dest, probs::AbstractVector, C::AbstractMatrix)
-    for I ∈ eachindex(IndexCartesian(), dest)
-        tmp = zero(eltype(dest))
-        for k ∈ eachindex(probs)
-            tmp += C[k, I[1]] * C[k, I[2]] / probs[k]
-        end
-        dest[I] = tmp
-    end
+Is = findall(θ -> sum(abs2, θ) ≤ 1 / 2, θs)
+
+x_coords = [coords[I[1]] for I ∈ Is]
+y_coords = [coords[I[2]] for I ∈ Is]
+
+fisher_values = Vector{Float32}(undef, length(Is))
+
+Threads.@threads for n ∈ eachindex(Is)
+    I = Is[n]
+    fisher_values[n] = tr(inv(fisher(mthd, θs[I[1], I[2]])))
 end
 ##
-rs = Base.oneto(200)
-x₀ = length(rs) ÷ 2
-y₀ = length(rs) ÷ 2
-w = length(rs) ÷ 8
-
-basis = positive_l_basis(2, [x₀, y₀, w, 1])
+fig = Figure(size=(700, 600))
+ax = Axis(fig[1, 1], aspect=DataAspect())
+xlims!(ax, (-1, 1))
+ylims!(ax, (-1, 1))
+hm = heatmap!(ax, x_coords, y_coords, fisher_values)
+Colorbar(fig[1, 2], hm)
+fig
 ##
+ωs = gell_mann_matrices(2)
+basis_func_obs = [(x, y) -> f(x, y) * blade_obstruction(x, y, -1) for f in basis_func]
+T, Ω, L = assemble_povm_matrix(rs, rs, basis_func_obs)
+mthd = LinearInversion(T, Ω)
 
+fisher_values_obs = Vector{Float32}(undef, length(Is))
 
-##
-cutoffs = LinRange(x₀ - w, x₀ + 2.5w, 16)
-
-N = 10^3
-d = length(basis)
-ρs = sample(ProductMeasure(d), N)
-
-Is = Array{Float32,4}(undef, d^2 - 1, d^2 - 1, N, length(cutoffs))
-
-@showprogress for n ∈ eachindex(cutoffs)
-    obstructed_basis = get_obstructed_basis(basis, blade_obstruction, cutoffs[n])
-
-    povm, ρs = get_proper_povm_and_states(rs, rs, ρs, obstructed_basis)
-    filtered_povm = filter(Π -> !iszero(Π), povm)
-
-    C = LinearInversion(povm).C
-
-    for (m, ρ) ∈ enumerate(eachslice(ρs, dims=3))
-        probs = vec([real(ρ ⋅ Π) for Π in filtered_povm])
-        fisher_information!(view(Is, :, :, m, n), probs, C)
-    end
+Threads.@threads for n ∈ eachindex(Is)
+    I = Is[n]
+    θ = θs[I[1], I[2]]
+    J = η_func_jac(θ, ωs, L, ωs)
+    fisher_values_obs[n] = tr(inv(J' * fisher(mthd, θ) * J))
 end
 
-mean_Is = dropdims(mean(Is, dims=3), dims=3)
+fig = Figure(size=(700, 600))
+ax = Axis(fig[1, 1], aspect=DataAspect())
+xlims!(ax, (-1, 1))
+ylims!(ax, (-1, 1))
 
-inv_Is = mapslices(inv, mean_Is, dims=(1, 2))
-diag_inv_Is = dropdims(mapslices(diag, inv_Is, dims=(1, 2)), dims=2)
-##
-with_theme(theme_latexfonts()) do
-    fig = Figure(fontsize=20)
-    ax = Axis(fig[1, 1],
-        xlabel="Blade position (waist)",
-        ylabel="Average inverse Fisher information",
-        #yscale=log2,
-        #yticks=[2^n for n ∈ 0:13],
-        xticks=-2:0.5:2.5,
-    )
-    #yscale=log10)
-    #ylims!(ax, 1, 100)
-    series!(ax, (cutoffs .- x₀) / w, diag_inv_Is,
-        labels=[L"(I^{-1})_{XX}", L"(I^{-1})_{YY}", L"(I^{-1})_{ZZ}"],
-        color=[:red, :green, :blue],
-        linewidth=3,
-        linestyle=[:solid, :dash, :dot],)
-    axislegend(position=:rt)
-    fig
-    #save("Plots/fisher_blade.pdf", fig)
-end
-##
-cutoffs = LinRange(0.1w, 2w, 32)
+log_relative = log.(fisher_values_obs ./ fisher_values)
 
-N = 10^3
-d = length(_basis)
-ρs = sample(ProductMeasure(d), N)
-
-Is = Array{Float32,3}(undef, d^2 - 1, d^2 - 1, length(cutoffs))
-
-for (n, cutoff) ∈ enumerate(cutoffs)
-    obstructed_basis = get_obstructed_basis(basis, iris_obstruction, x₀, y₀, cutoffs[n])
-    povm, ρs = get_proper_povm_and_states(rs, rs, ρs, obstructed_basis)
-    Is[:, :, n] = mean(fisher_information(ρs, povm), dims=3)
-end
-
-inv_Is = mapslices(inv, Is, dims=(1, 2))
-diag_inv_Is = dropdims(mapslices(diag, inv_Is, dims=(1, 2)), dims=2)
-##
-with_theme(theme_latexfonts()) do
-    fig = Figure(fontsize=20)
-    ax = Axis(fig[1, 1],
-        xlabel="Iris radius (waist)",
-        ylabel="Average inverse Fisher information",
-        #yscale=log2,
-        #yticks=[2^n for n ∈ 0:13],
-    )
-    #yscale=log10)
-    ylims!(ax, 0, 3)
-    series!(ax, cutoffs / w, diag_inv_Is,
-        labels=[L"(I^{-1})_{XX}", L"(I^{-1})_{YY}", L"(I^{-1})_{ZZ}"],
-        color=[:red, :green, :blue],
-        linestyle=[:solid, :dash, :dot],
-        linewidth=3,)
-    axislegend(position=:rt)
-    fig
-    #save("Plots/fisher_iris.pdf", fig)
-end
-##
-rs = Base.oneto(200)
-x₀ = length(rs) ÷ 2
-y₀ = length(rs) ÷ 2
-w = length(rs) ÷ 4
-
-basis = only_l_basis(4, [x₀, y₀, w, 1])
-
-povm = assemble_position_operators(rs, rs, basis)
-
-N = 10^3
-d = length(basis)
-ρs = sample(ProductMeasure(d), N)
-
-inv_I = mean(ρ -> fisher_information(ρ, povm), eachslice(ρs, dims=3)) |> inv
-
-diag(inv_I) |> sort
-
-
-ρs[:, :, 5]
-visualize([real(tr(ρs[:, :, 6] * Π)) for Π ∈ povm])
-##
+lim = maximum(abs, log_relative)
+hm = heatmap!(ax, x_coords, y_coords, log_relative, colormap=:seismic, colorrange=(-lim, lim))   
+Colorbar(fig[1, 2], hm)
+fig

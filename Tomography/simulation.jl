@@ -2,7 +2,6 @@ using StructuredLight, LinearAlgebra, CairoMakie, ProgressMeter, BayesianTomogra
 includet("../Utils/position_operators.jl")
 includet("../Utils/basis.jl")
 includet("../Utils/obstructed_measurements.jl")
-includet("../Utils/fisher.jl")
 ##
 rs = LinRange(-2f0, 2f0, 256)
 

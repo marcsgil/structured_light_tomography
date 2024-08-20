@@ -7,36 +7,23 @@ includet("../Utils/model_fitting.jl")
 
 ρs = sample(ProductMeasure(2), 100)
 
-rs = Base.oneto(200)
-x₀ = rs[length(rs)÷2]
-y₀ = rs[length(rs)÷2]
-w = length(rs)÷8
+rs = LinRange(-3.0f0, 3.0f0, 256)
 
-p0 = [x₀, y₀, w, 1, 1, 2.0]
-basis = positive_l_basis(2, p0)
+basis_func = positive_l_basis(2, [0.0f0, 0, 1, 1])
+obstructed_basis = [(x, y) -> f(x, y) * iris_obstruction(x, y, 0, 0, 0.7f0) for f in basis_func]
 
-calibration = [gaussian_model(x, y, p0) for x ∈ rs, y ∈ rs]
+T0, Ω0, L0 = assemble_povm_matrix(rs, rs, basis_func)
+T, Ω, L = assemble_povm_matrix(rs, rs, obstructed_basis)
 
-images = stack(get_intensity(ρ, basis, rs, rs) for ρ ∈ eachslice(ρs, dims=3))
+mthd0 = LinearInversion(T, Ω)
+mthd = LinearInversion(T, Ω)
 
-visualize(calibration)
-visualize(images[:, :, 1:2])
+θ = Float32(1 / √2) * [0, 0, 0]
+η = η_func(θ, Ω0, L, Ω0)
 
-fit = surface_fit(gaussian_model, rs, rs, calibration, p0)
 
-fit_param = fit.param
+probs = get_probs(mthd, η)
 
-##
-fids = Vector{Float64}(undef, size(ρs, 3))
-##
-povm = assemble_position_operators(rs, rs, basis)
-mthd = LinearInversion(povm)
+ρ_pred, η_pred, _ = prediction(probs, mthd)
 
-for m ∈ axes(images, 3)
-    σ, _ = prediction(images[:, :, m], mthd)
-    fids[m] = fidelity(ρs[:, :, m], σ)
-end
-
-maximum(fids)
-
-mean(fids)
+η_pred

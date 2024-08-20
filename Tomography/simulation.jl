@@ -2,75 +2,51 @@ using StructuredLight, LinearAlgebra, CairoMakie, ProgressMeter, BayesianTomogra
 includet("../Utils/position_operators.jl")
 includet("../Utils/basis.jl")
 includet("../Utils/obstructed_measurements.jl")
-##
-rs = LinRange(-2f0, 2f0, 256)
 
+function covariance_bound_and_probs(θ, mthd, L)
+    ω = gell_mann_matrices(mthd.dim)
+    η = η_func(θ, ω, L, ω)
+    J = η_func_jac(θ, ω, L, ω)
+    tr(inv(J' * fisher(mthd, η) * J)), get_probs(mthd, η)
+end
+
+function simulate_tomography(θ, mthd, L, counts, repetitions)
+    C, probs = covariance_bound_and_probs(θ, mthd, L)
+    ω = gell_mann_matrices(mthd.dim)
+    θ₀ = convert(eltype(θ), 1 / √mthd.dim)
+    ρ = linear_combination(vcat(θ₀, θ), ω)
+
+    error = zeros(Float32, length(counts), repetitions)
+    p = Progress(length(error))
+
+    Threads.@threads for n ∈ axes(error, 2)
+        for m ∈ axes(error, 1)
+            sim = simulate_outcomes(probs, counts[m])
+            σ_pred, η_pred, _ = prediction(sim, mthd)
+            error[m, n] = sum(abs2, ρ - σ_pred / tr(σ_pred))
+            next!(p)
+        end
+    end
+
+    dropdims(mean(error, dims=2), dims=2), C
+end
+##
+rs = LinRange(-2.0f0, 2.0f0, 256)
+θ = Float32(1 / √2) * [0, 0, 0]
+counts = [round(Int, 10.0^k) for k ∈ LinRange(2, 4, 20)]
 basis_func = positive_l_basis(2, [0.0f0, 0, 1, 1])
-d = length(basis_func)
-
-θ = Float32(1 / √2) * [1, 0, 0, 1]
-ρ = linear_combination(θ, gell_mann_matrices(2))
-img = get_intensity(ρ, basis_func, rs, rs)
-normalize!(img, 1)
-
-visualize(img)
-
-_T, Ω, L, p_corr = assemble_povm_matrix(basis_func, rs, rs)
-T = hcat(p_corr * Float32(√2), _T)
-mthd = BayesianInference(T, Ω)
-ω = gell_mann_matrices(2)
-
-counts = [round(Int, 10^n) for n ∈ LinRange(3, 4, 10)]
-error_clean = Matrix{Float32}(undef, length(counts), 10^2)
-
-I0 = fisher_at(θ, basis_func, ω, L, ω, rs, _T)
 ##
-p = Progress(length(error_clean))
-Threads.@threads for n ∈ axes(error_clean, 2)
-    for m ∈ axes(error_clean, 1)
-        sim = simulate_outcomes(img, counts[m])
-        σ, θ_pred, _ = prediction(sim, mthd)
-        ϕ = project2pure(σ / tr(σ))
-        error_clean[m, n] = sum(abs2, ρ - ϕ * ϕ' )
-        #error_clean[m, n] = sum(abs2, ρ - σ / tr(σ))
-        next!(p)
-    end
+radius = Float32[Inf, 1.2, 0.8, 0.5]
+Cs = similar(radius)
+mean_error = similar(radius, Vector{Float32})
+
+for n ∈ eachindex(radius, Cs, mean_error)
+    obstructed_basis = get_obstructed_basis(basis_func, iris_obstruction, 0, 0, radius[n])
+    T, Ω, L = assemble_povm_matrix(rs, rs, obstructed_basis)
+    mthd = BayesianInference(T, Ω)
+
+    mean_error[n], Cs[n] = simulate_tomography(θ, mthd, L, counts, 200)
 end
-
-mean_error_clean = dropdims(mean(error_clean, dims=2), dims=2)
-##
-obstructed_basis = [(x, y) -> f(x, y) * iris_obstruction(x, y, 0, 0, .5f0) for f in basis_func]
-
-img = get_intensity(ρ, obstructed_basis, rs, rs)
-normalize!(img, 1)
-
-visualize(img) |> display
-
-_T, Ω, L, p_corr = assemble_povm_matrix(obstructed_basis, rs, rs)
-T = hcat(p_corr * Float32(√2), _T)
-mthd = BayesianInference(T, Ω)
-ω = gell_mann_matrices(2)
-
-Ω
-
-error_ob = similar(error_clean)
-
-
-I_ob = fisher_at(θ, obstructed_basis, ω, L, ω, rs, _T)
-##
-p = Progress(length(error_ob))
-Threads.@threads for n ∈ axes(error_ob, 2)
-    for m ∈ axes(error_ob, 1)
-        sim = simulate_outcomes(img, counts[m])
-        σ, θ_pred, _ = prediction(sim, mthd)
-        #ϕ = project2pure(σ / tr(σ))
-        #error_clean[m, n] = sum(abs2, ρ - ϕ * ϕ' )
-        error_ob[m, n] = sum(abs2, ρ - σ / tr(σ))
-        next!(p)
-    end
-end
-
-mean_error_ob = dropdims(mean(error_ob, dims=2), dims=2)
 ##
 with_theme(theme_latexfonts()) do
     fig = Figure(fontsize=20)
@@ -79,19 +55,20 @@ with_theme(theme_latexfonts()) do
         ylabel="Mean squared error",
         xscale=log10,
         yscale=log10)
-    scatter!(ax, counts, mean_error_clean, label="Unobstructed")
-    lines!(ax, counts, I0 ./ counts)
-    scatter!(ax, counts, mean_error_ob, label = "Obstructed (r=0.5w)")
-    lines!(ax, counts, I_ob ./ counts)
-    axislegend()
+
+    for n ∈ eachindex(mean_error, Cs)
+        lines!(ax, counts, Cs[n] ./ counts, label="r=$(radius[n])")
+        scatter!(ax, counts, mean_error[n])
+    end
+    axislegend(ax)
+    save("Plots/simulated_tomography_obstruction.pdf", fig)
     fig
-    #save("Plots/simulated_tomography_obstruction.pdf", fig)
 end
 ##
 using LsqFit
 
-model(N, p) = log(p[1]) .- log.(N) 
+model(N, p) = log(p[1]) .- log.(N)
 
-fit = LsqFit.curve_fit(model, counts, log.(mean_error_ob), [5.])
+fit = LsqFit.curve_fit(model, counts, log.(mean_error_ob), [5.0])
 
 confidence_interval(fit, 0.05)

@@ -60,9 +60,12 @@ function get_intensity(ρ, basis_func, x, y)
 end
 
 function η_func(θ, Ω, L, ω)
-    transformed_ρ = L' * linear_combination(θ, Ω) * L
+    T = eltype(θ)
+    dim = size(L, 1)
+    _θ = vcat(convert(T, dim^(-1 // 2)), θ)
+    transformed_ρ = L' * linear_combination(_θ, Ω) * L
     N = tr(transformed_ρ)
-    [real(tr(transformed_ρ * ω) / N) for ω ∈ eachslice(ω, dims=3)]
+    [real(tr(transformed_ρ * ω) / N) for ω ∈ eachslice((@view ω[:, :, begin+1:end]), dims=3)]
 end
 
 function η_func_jac(θ, Ωs, L, ωs)
@@ -74,19 +77,4 @@ function η_func_jac(θ, Ωs, L, ωs)
 
     [real(tr(L' * Ω * L * ω) / N - tr(transformed_ρ * ω) * tr(L' * Ω * L) / N^2)
      for ω ∈ eachslice((@view ωs[:, :, begin+1:end]), dims=3), Ω ∈ eachslice((@view Ωs[:, :, begin+1:end]), dims=3)]
-end
-
-
-
-function fisher_at(θ, basis_func, Ω, L, ω, rs, T)
-    ρ = linear_combination(θ, ω)
-    img = Matrix{Float32}(undef, length(rs), length(rs))
-    buffer = [f(rs[1], rs[1]) for f in basis_func]
-    dim = length(basis_func)
-    F = Matrix{Float32}(undef, dim^2 - 1, dim^2 - 1)
-    get_intensity!(img, buffer, ρ, basis_func, rs, rs)
-    normalize!(img, 1)
-    fisher!(F, T, img)
-    J = η_func_jac(θ, Ω, L, ω)
-    tr(inv(J' * F * J))
 end

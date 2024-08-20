@@ -20,6 +20,7 @@ end
 ##
 rs = LinRange(-2.2f0, 2.2f0, 256)
 basis_func = positive_l_basis(2, [0.0f0, 0, 1, 1])
+ωs = gell_mann_matrices(2)
 ##
 T, Ω, L = assemble_povm_matrix(rs, rs, basis_func)
 mthd = LinearInversion(T, Ω)
@@ -35,11 +36,14 @@ y_coords = [coords[I[2]] for I ∈ Is]
 
 fisher_values = Vector{Float32}(undef, length(Is))
 
+p = Progress(length(Is))
 Threads.@threads for n ∈ eachindex(Is)
     I = Is[n]
     θ = θs[I[1], I[2]]
+    η = η_func(θ, ωs, L, ωs)
     J = η_func_jac(θ, ωs, L, ωs)
-    fisher_values[n] = tr(inv(J' * fisher(mthd, θ) * J))
+    fisher_values[n] = tr(inv(J' * fisher(mthd, η) * J))
+    next!(p)
 end
 
 modes = [[abs2(f(x, y)) for x ∈ rs, y ∈ rs] for f in basis_func]
@@ -85,18 +89,21 @@ with_theme(theme_latexfonts()) do
 end
 ##
 ωs = gell_mann_matrices(2)
-r = 0.5f0
+r = 0.25f0
 basis_func_obs = [(x, y) -> f(x, y) * iris_obstruction(x, y, 0, 0, r) for f in basis_func]
 T, Ω, L = assemble_povm_matrix(rs, rs, basis_func_obs)
 mthd = LinearInversion(T, Ω)
 
 fisher_values_obs = Vector{Float32}(undef, length(Is))
 
+p = Progress(length(Is))
 Threads.@threads for n ∈ eachindex(Is)
     I = Is[n]
     θ = θs[I[1], I[2]]
+    η = η_func(θ, ωs, L, ωs)
     J = η_func_jac(θ, ωs, L, ωs)
-    fisher_values_obs[n] = tr(inv(J' * fisher(mthd, θ) * J))
+    fisher_values_obs[n] = tr(inv(J' * fisher(mthd, η) * J))
+    next!(p)
 end
 
 modes = [[abs2(f(x, y)) for x ∈ rs, y ∈ rs] for f in basis_func_obs]
@@ -146,18 +153,21 @@ with_theme(theme_latexfonts()) do
 end
 ##
 ωs = gell_mann_matrices(2)
-xb = .5f0
+xb = -1f0
 basis_func_obs = [(x, y) -> f(x, y) * blade_obstruction(x, y, xb) for f in basis_func]
 T, Ω, L = assemble_povm_matrix(rs, rs, basis_func_obs)
 mthd = LinearInversion(T, Ω)
 
 fisher_values_obs = Vector{Float32}(undef, length(Is))
 
+p = Progress(length(Is))
 Threads.@threads for n ∈ eachindex(Is)
     I = Is[n]
     θ = θs[I[1], I[2]]
+    η = η_func(θ, ωs, L, ωs)
     J = η_func_jac(θ, ωs, L, ωs)
-    fisher_values_obs[n] = tr(inv(J' * fisher(mthd, θ) * J))
+    fisher_values_obs[n] = tr(inv(J' * fisher(mthd, η) * J))
+    next!(p)
 end
 
 modes = [[abs2(f(x, y)) for x ∈ rs, y ∈ rs] for f in basis_func_obs]

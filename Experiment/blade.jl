@@ -1,5 +1,7 @@
-using SpatialLightModulator, StructuredLight, HDF5
+using SpatialLightModulator, StructuredLight, HDF5, CairoMakie
+import SpatialLightModulator: centralized_cut
 
+includet("AcquisitionUtils/ximea.jl")
 includet("AcquisitionUtils/capture_func.jl")
 includet("../Utils/basis.jl")
 
@@ -9,15 +11,15 @@ width = 15.36f0
 height = 8.64f0
 resX = 1920
 resY = 1080
-w = 0.3
+w = 0.2f0
 max_modulation = 82
-x_period = 5
-y_period = 4
+x_period = 4
+y_period = 3
 
-x = LinRange(-width / 2, width / 2, resX)
-y = LinRange(-height / 2, height / 2, resY)
-#x = centralized_cut(X, 300)
-#y = centralized_cut(Y, 300)
+X = LinRange(-width / 2, width / 2, resX)
+Y = LinRange(-height / 2, height / 2, resY)
+x = centralized_cut(X, 300)
+y = centralized_cut(Y, 300)
 
 incoming = hg(x, y, w=2.3f0)
 
@@ -25,27 +27,23 @@ config = (; width, height, resX, resY, max_modulation, x_period, y_period, incom
 ##
 desired = lg(x, y; w, l=2)
 holo = generate_hologram(desired, incoming, x, y, max_modulation, x_period, y_period)
-update_hologram(slm, holo)
+update_hologram!(slm, holo)
 ##
-includet("AcquisitionUtils/ximea.jl")
 camera = XimeaCamera(
     "downsampling" => "XI_DWN_2x2",
     "width" => 200,
     "height" => 200,
-    "offsetX" => 56,
-    "offsetY" => 252,
-    "exposure" => 11150,
+    "offsetX" => 60,
+    "offsetY" => 232,
+    "exposure" => 35,
 )
-using CairoMakie
 ##
-saving_path = "../Data/Raw/test.h5"
+saving_path = "../Data/Raw/blade_new.h5"
 
-n_masks = 300
-
-basis_functions = positive_l_basis(2, [0, 0, w, 1])
+n_masks = 200
 
 ρs = h5open("../Data/template.h5") do file
-    file["labels_dim2"][:, :, 1:5]
+    file["labels_dim2"][:, :, 1:100]
 end
 ##
 prompt_calibration(saving_path, w, camera, slm, config)

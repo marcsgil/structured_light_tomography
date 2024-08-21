@@ -33,8 +33,8 @@ camera = XimeaCamera(
     "downsampling" => "XI_DWN_2x2",
     "width" => 200,
     "height" => 200,
-    "offsetX" => 40,
-    "offsetY" => 288,
+    "offsetX" => 60,
+    "offsetY" => 232,
     "exposure" => 15,
 )
 ##
@@ -43,7 +43,7 @@ saving_path = "../Data/Raw/test_julia.h5"
 n_masks = 200
 
 ρs = h5open("../Data/template.h5") do file
-    file["labels_dim2"][:, :, 1:3]
+    file["labels_dim2"][:, :, 1:100]
 end
 ##
 prompt_calibration(saving_path, w, camera, slm, config)

@@ -6,6 +6,8 @@ includet("../Utils/obstructed_measurements.jl")
 includet("../Utils/model_fitting.jl")
 
 relu(x, y) = x > y ? x - y : zero(x)
+extract_θ(ρ, ωs) = stack(real(tr(ρ * ω)) for ω ∈ eachslice(view(ωs, :, :, 2:4), dims=3))
+ωs = gell_mann_matrices(2)
 
 function load_data(path, key)
     h5open(path) do file
@@ -20,40 +22,33 @@ calibration = h5open(path) do file
     file["calibration"] |> read
 end
 
-function simple_model(x, y, p)
-    x₀, y₀, w, α, A, bg = p
-    bg + A * exp.(-2 * ((x .- x₀) .^ 2 .+ α *(y .- y₀) .^ 2) ./ w^2)
-end
-
 x = LinRange(-0.5, 0.5, size(calibration, 1))
 y = LinRange(-0.5, 0.5, size(calibration, 2))
 
 p0 = Float64.([0, 0, 0.1, 1, maximum(calibration), minimum(calibration)])
-fit = surface_fit(simple_model, x, y, calibration, p0)
+fit = surface_fit(gaussian_model, x, y, calibration, p0)
 
 fit.param
 basis = positive_l_basis(2, fit.param)
 ##
-N = 1
+N = 3
 
-fids = Matrix{Float64}(undef, 3, N)
+fids = Matrix{Float64}(undef, 100, N)
 pars = Vector{Float64}(undef, N)
 
-for n ∈ 1
-    images, ρs, par = load_data(path, "images_1")
+for n ∈ 1:N
+    images, ρs, par = load_data(path, "images_$n")
 
-    #pars[n] = par[2]
-
-    obstructed_basis = get_obstructed_basis(basis, iris_obstruction, fit.param[1], fit.param[2], 0.9*par[1])
-    povm, new_ρs = get_proper_povm_and_states(x, y, ρs, obstructed_basis)
+    basis_func_obs = get_obstructed_basis(basis, iris_obstruction, fit.param[1], fit.param[2], par[1])
+    T, Ω, L = assemble_povm_matrix(x, y, basis_func_obs)
+    mthd = LinearInversion(T, Ω)
 
     map!(x -> relu(x, 0x03), images, images)
-    #povm = assemble_position_operators(x, y, basis)
-    mthd = LinearInversion(povm)
 
     for m ∈ axes(images, 3)
-        σ, _ = prediction(Float32.(images[:, :, m]), mthd)
-        fids[m, n] = fidelity(new_ρs[:, :, m], σ)
+        probs = vec(normalize(images[:, :, m], 1))
+        σ, _ = prediction(probs, mthd)
+        fids[m, n] = fidelity(ρs[:, :, m], σ / tr(σ))
     end
 end
 
@@ -61,54 +56,20 @@ fids
 
 mean(fids, dims=1)
 ##
-images, ρs, par = load_data(path, "images_1")
+images, ρs, par = load_data(path, "images_2")
 
 calibration = h5open(path) do file
     file["calibration"] |> read
 end
 
-"""x = LinRange(-0.5, 0.5, size(calibration, 1))
-y = LinRange(-0.5, 0.5, size(calibration, 2))
-
-p0 = Float64.([0, 0, 0.1, 1, maximum(calibration), minimum(calibration)])
-
-fit = surface_fit(gaussian_model, x, y, calibration[:,:,1], p0)"""
-
-basis = positive_l_basis(2, fit.param)
-obstructed_basis = get_obstructed_basis(basis, iris_obstruction, 0, fit.param[2], 0.9 * par[1])
-povm, new_ρs = get_proper_povm_and_states(x, y, ρs, obstructed_basis)
+basis_func_obs = get_obstructed_basis(basis, iris_obstruction, fit.param[1], fit.param[2], par[1])
+T, Ω, L = assemble_povm_matrix(x, y, basis_func_obs)
+mthd = LinearInversion(T, Ω)
 ##
-visualize(calibration[:, :, 1]) |> display
+m=6
+θ = extract_θ(ρs[:, :, m], ωs)
+η = η_func(θ, ωs, L, ωs)
 
-visualize([gaussian_model(x, y, fit.param) for x ∈ x, y ∈ y]) |> display
+visualize(reshape(get_probs(mthd, η), 200, 200))
+visualize(images[:,:,m])
 ##
-n = 3
-visualize(images[:, :, n]) |> display
-visualize(get_intensity(ρs[:, :, n], obstructed_basis, x, y)) |> display
-##
-visualize(abs2.(lg(x .- new_fit_param[1], y .- new_fit_param[2], w=fit.param[3], l=2)))
-##
-
-
-test = h5open("Data/test_side.h5") do file
-    read(file["test"])
-end
-
-visualize(test[:, :, 2]) |> display
-##
-
-fit.param[3]
-new_fit_param[3]
-
-basis = positive_l_basis(2, new_fit_param)
-se(x, y) = mapreduce((x, y) -> abs2(x - y), +, x, y)
-
-pred = [gaussian_model(x, y, new_fit_param) for x ∈ x, y ∈ y]
-se(pred, calibration)
-##
-most_frequent_value(data) = countmap(data) |> argmax
-
-function remove_background!(images)
-    bg = most_frequent_value(images)
-    map!(x -> x < bg ? zero(x) : x - bg, images, images)
-end

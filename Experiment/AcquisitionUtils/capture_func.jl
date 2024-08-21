@@ -1,4 +1,5 @@
-using PartiallyCoherentSources, KernelAbstractions, LinearAlgebra, ProgressMeter
+using PartiallyCoherentSources, KernelAbstractions, LinearAlgebra, ProgressMeter, LsqFit
+
 
 includet("../../Utils/model_fitting.jl")
 

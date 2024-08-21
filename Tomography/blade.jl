@@ -3,8 +3,11 @@ using CairoMakie
 includet("../Utils/basis.jl")
 includet("../Utils/position_operators.jl")
 includet("../Utils/obstructed_measurements.jl")
+includet("../Utils/model_fitting.jl")
 
 relu(x, y) = x > y ? x - y : zero(x)
+extract_θ(ρ, ωs) = stack(real(tr(ρ * ω)) for ω ∈ eachslice(view(ωs, :, :, 2:4), dims=3))
+ωs = gell_mann_matrices(2)
 
 function load_data(path, key)
     h5open(path) do file
@@ -13,16 +16,22 @@ function load_data(path, key)
     end
 end
 
-path = "Data/Raw/Old/blade.h5"
+path = "Data/Raw/blade_new.h5"
 
-fit_param, x, y = h5open(path) do file
-    obj = file["fit_param"]
-    read(obj), attrs(obj)["x"], attrs(obj)["y"]
+calibration = h5open(path) do file
+    file["calibration"] |> read
 end
 
-basis = positive_l_basis(2, fit_param[1:4])
+x = LinRange(-0.5, 0.5, size(calibration, 1))
+y = LinRange(-0.5, 0.5, size(calibration, 2))
+
+p0 = Float64.([0, 0, 0.1, 1, maximum(calibration), minimum(calibration)])
+fit = surface_fit(gaussian_model, x, y, calibration, p0)
+
+fit.param
+basis = positive_l_basis(2, fit.param)
 ##
-N = 5
+N = 3
 
 fids = Matrix{Float64}(undef, 100, N)
 pars = Vector{Float64}(undef, N)
@@ -30,20 +39,43 @@ pars = Vector{Float64}(undef, N)
 for n ∈ 1:N
     images, ρs, par = load_data(path, "images_$n")
 
-    pars[n] = par[2]
+    @show par[2]
 
-    map!(x -> relu(x, 0x02), images, images)
+    basis_func_obs = get_obstructed_basis(basis, blade_obstruction, x[Int(par[1])])
+    T, Ω, L = assemble_povm_matrix(x, y, basis_func_obs)
+    mthd = LinearInversion(T, Ω)
 
-    obstructed_basis = get_obstructed_basis(basis, blade_obstruction, x[Int(par[1])])
-    povm, ρs = get_proper_povm_and_states(x, y, ρs, obstructed_basis)
-
-    mthd = LinearInversion(povm)
+    map!(x -> relu(x, 0x03), images, images)
 
     for m ∈ axes(images, 3)
-        σ, _ = prediction(Float32.(images[:, :, m]), mthd)
-        fids[m, n] = fidelity(ρs[:, :, m], σ)
+        probs = vec(normalize(images[:, :, m], 1))
+        σ, _ = prediction(probs, mthd)
+        fids[m, n] = fidelity(ρs[:, :, m], σ / tr(σ))
     end
 end
 
+fids
+
 mean(fids, dims=1)
-pars
+##
+images, ρs, par = load_data(path, "images_1")
+
+calibration = h5open(path) do file
+    file["calibration"] |> read
+end
+par
+
+basis_func_obs = get_obstructed_basis(basis, blade_obstruction, x[Int(par[1])])
+T, Ω, L = assemble_povm_matrix(x, y, basis_func_obs)
+mthd = LinearInversion(T, Ω)
+##
+m=1
+θ = extract_θ(ρs[:, :, m], ωs)
+η = η_func(θ, ωs, L, ωs)
+
+visualize(reshape(get_probs(mthd, η), 200, 200))
+visualize(images[:,:,m])
+##
+"""h5open(path) do file
+    delete_object(file["images_1"])
+end"""

@@ -21,10 +21,3 @@ function blade_model(x, y, p)
     blade_pos = p[end]
     gaussian_model(x, y, _p) * (x < blade_pos)
 end
-
-function iris_model(x, y, param, p, l, radius)
-    x₀, y₀, w, α, amplitude, offset = param
-
-    (offset + amplitude * ((x - x₀)^2 + (y - y₀)^2 < radius[1]^2) *
-              abs2(lg(x - x₀, α * (y - y₀); w, p, l)))
-end

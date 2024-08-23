@@ -1,4 +1,4 @@
-using BayesianTomography, HDF5, ProgressMeter#, PositionMeasurements
+using BayesianTomography, HDF5, ProgressMeter
 
 includet("../Data/data_treatment_utils.jl")
 includet("../Utils/position_operators.jl")
@@ -16,26 +16,15 @@ order = 1
 histories = file["histories_order$order"] |> read
 coefficients = read(file["labels_order$order"])
 
-basis = fixed_order_basis(order, [0, 0, 1/√2, 1])
-
-
+basis = fixed_order_basis(order, [0, 0, 1 / √2, 1])
 
 direct_operators = assemble_position_operators(direct_x, direct_y, basis)
 mode_converter = diagm([cis(Float32(k * π / 2)) for k ∈ 0:order])
 astig_operators = assemble_position_operators(converted_x, converted_y, basis)
 unitary_transform!(astig_operators, mode_converter)
 operators = compose_povm(direct_operators, astig_operators);
-mthd = BayesianInference(operators)
-##
-m = 1
-outcomes = complete_representation(History(view(histories, :, m)), (64, 64, 2))
-
-#visualize(outcomes)
-
-ρ, _ = prediction(outcomes, mthd)
-ψ = project2pure(ρ)
-
-abs2(coefficients[:, m] ⋅ ψ)
+problem = StateTomographyProblem(operators)
+mthd = BayesianInference(problem)
 ##
 orders = 1:4
 photocounts = [2^k for k ∈ 6:11]
@@ -53,7 +42,8 @@ for (k, order) ∈ enumerate(orders)
     astig_operators = assemble_position_operators(converted_x, converted_y, basis)
     unitary_transform!(astig_operators, mode_converter)
     operators = compose_povm(direct_operators, astig_operators)
-    mthd = BayesianInference(operators)
+    problem = StateTomographyProblem(operators)
+    mthd = BayesianInference(problem)
 
     for m ∈ 1:50
         for n ∈ eachindex(photocounts)

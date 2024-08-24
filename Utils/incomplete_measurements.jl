@@ -1,78 +1,70 @@
-using LinearAlgebra
-includet("../Utils/basis.jl")
-
-function assemble_position_operators(xs, ys, basis)
-    T = complex(float(eltype(xs)))
-    Π = Matrix{T}(undef, length(basis), length(basis))
-    operators = Matrix{Matrix{T}}(undef, length(xs), length(ys))
-
-    Δx = xs[2] - xs[1]
-    Δy = ys[2] - ys[1]
-    ΔA = Δx * Δy
-
-    for (n, y) ∈ enumerate(ys), (m, x) ∈ enumerate(xs)
-        for (k, ψ) ∈ enumerate(basis), j ∈ eachindex(basis)
-            ϕ = basis[j]
-            Π[j, k] = conj(ϕ(x, y)) * ψ(x, y) * ΔA
-        end
-        operators[m, n] = copy(Π)
-    end
-
-    return operators
-end
+using LinearAlgebra, BayesianTomography
 
 function hermitian_transform!(ρ, L)
     rmul!(ρ, L)
     lmul!(L', ρ)
-    nothing
 end
 
 function density_matrix_transform!(ρ, L)
     hermitian_transform!(ρ, L)
     ρ ./= tr(ρ)
-    nothing
 end
 
-function get_transformation_functions!(partial_povm)
-    g = sum(partial_povm)
+function transform_incomplete_povm!(incomplete_povm)
+    g = sum(incomplete_povm)
     L = cholesky(g).L
     inv_L = inv(L)
-    for Π ∈ partial_povm
-        rmul!(Π, inv_L')
-        lmul!(inv_L, Π)
+    for Π ∈ incomplete_povm
+        hermitian_transform!(Π, inv_L')
     end
-
-    """function f!(ρ)
-        rmul!(ρ, inv_L)
-        lmul!(inv_L', ρ)
-        ρ ./= tr(ρ)
-    end"""
 
     L
 end
-##
-rs = LinRange(-1, 1, 128)
-basis = positive_l_basis(2, [0, 0, 1, 1])
 
-X = randn(ComplexF64, 2, 2)
-ρ = X * X'
-ρ ./= tr(ρ)
-σ = copy(ρ)
+function η_func(θ, L)
+    T = eltype(θ)
+    dim = size(L, 1)
+    ρ = density_matrix_reconstruction(θ)
+    density_matrix_transform!(ρ, L)
+    [real(tr(ρ * ω)) for ω ∈ GellMannMatrices(dim, complex(T))]
+end
 
-operators_base = assemble_position_operators(rs, rs, basis)
-operators = deepcopy(operators_base)
-L = get_transformation_functions!(operators)
+function η_func_jac(θ, L)
+    T = eltype(θ)
+    dim = size(L, 1)
+    ρ = density_matrix_reconstruction(θ)
+    hermitian_transform!(ρ, L)
+    N = tr(ρ)
+    ωs = GellMannMatrices(dim, complex(T))
+    Ωs = [hermitian_transform!(ω, L) for ω ∈ ωs]
 
-f!(σ, L)
+    [real(tr(Ω * ω) / N - tr(ρ * ω) * tr(Ω) / N^2) for ω ∈ ωs, Ω ∈ Ωs]
+end
 
-ρ
-σ
+function incomplete_fisher(problem, θs, L)
+    ηs = η_func(θs, L)
+    J = η_func_jac(θs, L)
+    J' * fisher(problem, ηs) * J
+end
 
-probs1 = [real(tr(Π * ρ)) for Π ∈ operators_base]
-probs2 = [real(tr(Π * σ)) for Π ∈ operators]
+function blade_obstruction(x, y, blade_pos)
+    x < blade_pos
+end
 
-sum(probs1)
-sum(probs2)
+function iris_obstruction(x, y, x₀, y₀, radius)
+    (x - x₀)^2 + (y - y₀)^2 < radius^2
+end
 
+function inverse_iris_obstruction(x, y, x₀, y₀, radius)
+    !iris_obstruction(x, y, x₀, y₀, radius)
+end
 
-sum(operators)
+function get_obstructed_basis(basis, obstruction_func, args...; kwargs...)
+    map(basis) do f
+        (x, y) -> f(x, y) * obstruction_func(x, y, args...; kwargs...)
+    end
+end
+
+function get_valid_indices(x, y, obstruction_func, args...; kwargs...)
+    findall(r -> obstruction_func(r..., args...; kwargs...), collect(Iterators.product(x, y)))
+end

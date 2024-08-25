@@ -1,53 +1,77 @@
 using BayesianTomography, HDF5, ProgressMeter, LinearAlgebra
+using CairoMakie
 includet("../Utils/basis.jl")
 includet("../Utils/position_operators.jl")
-
-file = h5open("Data/Processed/positive_l.h5")
-fit_param = read(file["fit_param"])
-
-fit_param
-
-rs = LinRange(-0.5, 0.5, 200)
+includet("../Utils/incomplete_measurements.jl")
+includet("../Utils/model_fitting.jl")
 ##
-dims = 2:6
-fids = Matrix{Float64}(undef, length(dims), 100)
+relu(x, y) = x > y ? x - y : zero(x)
 
-@showprogress for (m, dim) ∈ enumerate(dims)
-    basis = positive_l_basis(dim, fit_param[1:4])
-    T, Ω, L = assemble_povm_matrix(basis, rs, rs)
-    mthd = LinearInversion(T, Ω)
-
-    images = file["images_dim$dim"][:, :, :]
-    ρs = file["labels_dim$dim"][:, :, :]
-
-    for (n, probs) ∈ enumerate(eachslice(images, dims=3))
-        σ, θs, _ = prediction(probs, mthd)
-        fids[m, n] = fidelity(ρs[:, :, n], σ)
+function load_data(path, key)
+    h5open(path) do file
+        obj = file[key]
+        read(obj), attrs(obj)["density_matrices"]
     end
 end
 
-dropdims(mean(fids, dims=2), dims=2)
+path = "Data/Raw/positive_l.h5"
+
+calibration = h5open(path) do file
+    file["calibration"] |> read
+end
+
+x = LinRange(-0.5, 0.5, size(calibration, 1))
+y = LinRange(-0.5, 0.5, size(calibration, 2))
+
+p0 = Float64.([0, 0, 0.1, 1, maximum(calibration), minimum(calibration)])
+fit = surface_fit(gaussian_model, x, y, calibration, p0)
+
+fit.param
 ##
-out = h5open("New/Results/Intense/linear_inversion.h5", "w")
-out["fids"] = dropdims(mean(fids, dims=2), dims=2)
-out["fids_std"] = dropdims(std(fids, dims=2), dims=2)
-close(out)
+dims = 2:6
+
+fids = Matrix{Float64}(undef, 100, length(dims))
+pars = Vector{Float64}(undef, length(dims))
+
+for n ∈ eachindex(dims)
+    images, ρs = load_data(path, "images_dim$(dims[n])")
+
+    basis = positive_l_basis(dims[n], fit.param)
+    povm = assemble_position_operators(x, y, basis)
+    problem = StateTomographyProblem(povm)
+    mthd = LinearInversion(problem)
+
+    map!(x -> relu(x, round(UInt8, fit.param[6])), images, images)
+
+    for m ∈ axes(images, 3)
+        probs = vec(images[:, :, m])
+        σ, _ = prediction(probs, mthd)
+        σ = project2density(σ)
+        fids[m, n] = fidelity(ρs[:, :, m], σ)
+        #fids[m, n] = real(tr((ρs[:, :, m] - σ)^2))
+    end
+end
+
+fids
+
+sort(fids, dims=1)
+
+mean(fids, dims=1)
 ##
-dim = 2
-basis = positive_l_basis(dim, fit_param[1:4])
-povm = assemble_position_operators(rs, rs, basis)
+images, ρs, par = load_data(path, "images_2")
 
-mthd = LinearInversion(povm)
+calibration = h5open(path) do file
+    file["calibration"] |> read
+end
 
-n = 1
-img = file["images_dim$dim"][:, :, n]
-ρ = file["labels_dim$dim"][:, :, n]
+basis_func_obs = get_obstructed_basis(basis, iris_obstruction, fit.param[1], fit.param[2], par[1])
+T, Ω, L = assemble_povm_matrix(x, y, basis_func_obs)
+mthd = LinearInversion(T, Ω)
+##
+m=6
+θ = extract_θ(ρs[:, :, m], ωs)
+η = η_func(θ, ωs, L, ωs)
 
-σ, _ = prediction(img, mthd)
-
-σ
-ρ
-
-theo = [real(tr(Π * σ)) for Π ∈ povm]
-
-visualize(stack([img, theo]))
+visualize(reshape(get_probs(mthd, η), 200, 200))
+visualize(images[:,:,m])
+##

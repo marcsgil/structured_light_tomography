@@ -1,4 +1,4 @@
-using BayesianTomography, HDF5, ProgressMeter
+using BayesianTomography, HDF5, ProgressMeter, FiniteDiff
 
 includet("../Data/data_treatment_utils.jl")
 includet("../Utils/position_operators.jl")
@@ -25,10 +25,33 @@ unitary_transform!(astig_operators, mode_converter)
 operators = compose_povm(direct_operators, astig_operators);
 problem = StateTomographyProblem(operators)
 mthd = BayesianInference(problem)
+
+##
+m = 1
+outcomes = complete_representation(History(view(histories, 1:2048, m)), (64, 64, 2))
+ρ_pred, θ_pred, cov = prediction(outcomes, mthd)
+ψ = project2pure(ρ_pred)
+ρ_pred = ψ * ψ'
+θ_pred = gell_mann_projection(ψ * ψ')
+ρ = coefficients[:, m] * coefficients[:, m]'
+θ = gell_mann_projection(ρ)
+
+
+ρ_pred
+ρ
+
+grad = FiniteDiff.finite_difference_gradient(x -> fidelity(x, ρ), θ_pred)
+
+fidelity(ρ_pred, ρ), 1.96 * √dot(grad, cov, grad)
+
+
+
+real(tr((ρ - ρ_pred)^2)), 1.96 * √(2 * cov ⋅ cov)
 ##
 orders = 1:4
 photocounts = [2^k for k ∈ 6:11]
 all_fids = zeros(Float64, length(photocounts), 50, length(orders))
+all_errors = zeros(Float64, length(photocounts), 50, length(orders))
 
 p = Progress(length(all_fids))
 for (k, order) ∈ enumerate(orders)
@@ -48,16 +71,42 @@ for (k, order) ∈ enumerate(orders)
     for m ∈ 1:50
         for n ∈ eachindex(photocounts)
             outcomes = complete_representation(History(view(histories, 1:photocounts[n], m)), (64, 64, 2))
-            ρ, _ = prediction(outcomes, mthd)
-            ψ = project2pure(ρ)
+            ρ_pred, θ_pred, cov = prediction(outcomes, mthd)
+            ψ = project2pure(ρ_pred)
+            ρ_pred = ψ * ψ'
+            θ_pred = gell_mann_projection(ρ_pred)
+            ρ = coefficients[:, m] * coefficients[:, m]'
+            θ = gell_mann_projection(ρ)
 
-            all_fids[n, m, k] = abs2(coefficients[:, m] ⋅ ψ)
+            all_fids[n, m, k] = fidelity(ρ, ρ_pred)
+            grad = FiniteDiff.finite_difference_gradient(θ -> fidelity(ρ, θ), θ_pred)
+            all_errors[n, m, k] = 1.96 * dot(grad, cov, grad)
+            #all_fids[n, m, k] = mapreduce((x, y) -> abs2(x - y), +, θ_pred, θ)
+            #all_errors[n, m, k] = 1.28 * sqrt(2 * (cov ⋅ cov))
             next!(p)
         end
     end
 end
 
 fids = dropdims(mean(all_fids, dims=2), dims=2)
+errors = dropdims(mean(all_errors, dims=2), dims=2)
+##
+fig = Figure()
+ax = Axis(fig[1, 1],
+    xscale=log2,
+    #yscale=log10
+    yticks = 0.9:0.01:1
+    )
+ylims!(ax, 0.9,1.001)
+for (fid, error) ∈ zip(eachslice(fids, dims=2), eachslice(errors, dims=2))
+    lines!(ax, photocounts, fid)
+    band!(ax, photocounts, fid - error, fid + error, alpha=0.5)
+end
+
+
+#series!(ax, photocounts)
+#ribbon
+fig
 ##
 out = h5open("Results/Photocount/bayes.h5", "cw")
 out["fids"] = fids

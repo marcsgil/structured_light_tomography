@@ -4,6 +4,7 @@ includet("../Utils/basis.jl")
 includet("../Utils/position_operators.jl")
 includet("../Utils/incomplete_measurements.jl")
 includet("../Utils/model_fitting.jl")
+includet("../Utils/metrics.jl")
 ##
 relu(x, y) = x > y ? x - y : zero(x)
 
@@ -15,6 +16,7 @@ function load_data(path, key)
 end
 
 path = "Data/Raw/positive_l.h5"
+saving_path = "Results/Intense/positive_l.h5"
 
 calibration = h5open(path) do file
     file["calibration"] |> read
@@ -30,9 +32,8 @@ fit.param
 ##
 dims = 2:6
 
-fids = Matrix{Float64}(undef, 100, length(dims))
+metrics = Matrix{Float64}(undef, 100, length(dims))
 errors = Matrix{Float64}(undef, 100, length(dims))
-pars = Vector{Float64}(undef, length(dims))
 
 for n ∈ eachindex(dims)
     images, ρs = load_data(path, "images_dim$(dims[n])")
@@ -44,24 +45,29 @@ for n ∈ eachindex(dims)
 
     map!(x -> relu(x, round(UInt8, fit.param[6])), images, images)
 
-    for m ∈ axes(images, 3)
-        probs = normalize(images[:, :, m], 1)
+    θs = Array{Float32}(undef, dims[n]^2 - 1, 2, size(images)[end])
+    covs = Array{Float32}(undef, dims[n]^2 - 1, dims[n]^2 - 1, size(images)[end])
+
+    Threads.@threads for m ∈ axes(images, 3)
+        probs = images[:, :, m]
         ρ = ρs[:, :, m]
         θ = gell_mann_projection(ρ)
-        ρ_pred, θ_pred, cov = prediction(probs, mthd)
-        fids[m, n] = fidelity(ρ, θ_pred)
-        #grad = FiniteDiff.finite_difference_gradient(θ -> fidelity(ρ, θ), θ_pred)
-        #errors[m, n] = dot(grad, cov, grad) * 1.96
-        fids[m, n] = sum(abs2, θ_pred - θ)
-        errors[m, n] = sqrt(2 * cov ⋅ cov) * 1.96
+        pred_ρ, pred_θ, cov = prediction(probs, mthd)
+
+        θs[:, 1, m] = θ
+        θs[:, 2, m] = pred_θ
+        covs[:, :, m] = cov
+    end
+
+    h5open(saving_path, "cw") do file
+        file["thetas_dim$(dims[n])"] = θs
+        file["covs_dim$(dims[n])"] = covs
     end
 end
 
-fids
+mean(metrics, dims=1)
 
-mean(fids, dims=1)
-
-mean(errors, dims=1)
+##mean(errors, dims=1)
 ##
 images, ρs, par = load_data(path, "images_2")
 
@@ -73,10 +79,10 @@ basis_func_obs = get_obstructed_basis(basis, iris_obstruction, fit.param[1], fit
 T, Ω, L = assemble_povm_matrix(x, y, basis_func_obs)
 mthd = LinearInversion(T, Ω)
 ##
-m=6
+m = 6
 θ = extract_θ(ρs[:, :, m], ωs)
 η = η_func(θ, ωs, L, ωs)
 
 visualize(reshape(get_probs(mthd, η), 200, 200))
-visualize(images[:,:,m])
+visualize(images[:, :, m])
 ##

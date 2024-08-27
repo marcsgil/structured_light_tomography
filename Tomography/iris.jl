@@ -15,6 +15,7 @@ function load_data(path, key)
 end
 
 path = "Data/Raw/iris_new.h5"
+saving_path = "Results/Intense/iris.h5"
 
 calibration = h5open(path) do file
     file["calibration"] |> read
@@ -31,8 +32,8 @@ basis = positive_l_basis(2, fit.param)
 ##
 N = 3
 
-fids = Matrix{Float64}(undef, 100, N)
-pars = Vector{Float64}(undef, N)
+metrics = Matrix{Float64}(undef, 100, N)
+errors = Matrix{Float64}(undef, 100, N)
 
 for n ∈ 1:N
     images, ρs, par = load_data(path, "images_$n")
@@ -46,16 +47,32 @@ for n ∈ 1:N
 
     map!(x -> relu(x, round(UInt8, fit.param[6])), images, images)
 
-    for m ∈ axes(images, 3)
+    θs = Array{Float32}(undef, 3, 2, size(images)[end])
+    covs = Array{Float32}(undef, 3, 3, size(images)[end])
+
+    Threads.@threads for m ∈ axes(images, 3)
         probs = images[:, :, m][Is]
-        σ, _ = prediction(probs, mthd)
-        σ = project2density(σ)
-        density_matrix_transform!(σ, inv(L))
-        #fids[m, n] = fidelity(ρs[:, :, m], σ)
-        fids[m, n] = real(tr((ρs[:, :, m] - σ)^2))
+        ρ = ρs[:, :, m]
+        θ = gell_mann_projection(ρ)
+        pred_ρ, pred_θ, cov = prediction(probs, mthd)
+        density_matrix_transform!(pred_ρ, inv(L))
+        gell_mann_projection!(pred_θ, pred_ρ)
+
+        θs[:, 1, m] = θ
+        θs[:, 2, m] = pred_θ
+        covs[:, :, m] = cov
+    end
+
+    h5open(saving_path, "cw") do file
+        file["thetas_$n"] = θs
+        file["covs_$n"] = covs
     end
 end
 
+h5open(saving_path, "cw") do file
+    file["radius"] = pars
+end
+##
 fids
 
 mean(fids, dims=1)
@@ -71,10 +88,10 @@ basis_func_obs = get_obstructed_basis(basis, iris_obstruction, fit.param[1], fit
 T, Ω, L = assemble_povm_matrix(x, y, basis_func_obs)
 mthd = LinearInversion(T, Ω)
 ##
-m=6
+m = 6
 θ = extract_θ(ρs[:, :, m], ωs)
 η = η_func(θ, ωs, L, ωs)
 
 visualize(reshape(get_probs(mthd, η), 200, 200))
-visualize(images[:,:,m])
+visualize(images[:, :, m])
 ##

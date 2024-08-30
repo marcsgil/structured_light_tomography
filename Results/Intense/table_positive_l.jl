@@ -14,7 +14,7 @@ for m ∈ axes(metrics, 2)
     for n ∈ axes(metrics, 1)
         θ = @view θs[:, 1, n]
         pred_θ = @view θs[:, 2, n]
-        cov = @view covs[:, :, n]
+        zcov = @view covs[:, :, n]
 
         metrics[n, m], errors[n, m] = fidelity_metric(θ, pred_θ, cov, 0.95)
     end

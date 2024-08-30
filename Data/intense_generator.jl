@@ -29,9 +29,14 @@ dest = Array{Float32}(undef, length(rs), length(rs), size(θs, 2))
 generate_dataset!(dest, basis, ρs)
 add_noise!(dest)
 
-visualize(dest[:,:,1])
-
 h5open("Data/Training/positive_l.h5", "cw") do file
     file["images"] = dest
     file["labels"] = θs
 end
+##
+
+imgs, ρs = h5open("Data/Raw/positive_l.h5") do file
+    obj = file["images_dim2"]
+    read(obj), attrs(obj)["density_matrices"]
+end
+

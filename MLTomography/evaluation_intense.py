@@ -52,7 +52,7 @@ with h5py.File('../Data/Raw/positive_l.h5') as f:
         v2.Resize((64, 64))])
 
     images = f['images_dim2'][:]
-    images = np.expand_dims(images, 1) - 2
+    images = np.expand_dims(images, 1)
     images = transform(images).float()
             
     def normalize(x):

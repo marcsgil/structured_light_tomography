@@ -1,19 +1,18 @@
 using StructuredLight, LinearAlgebra, CairoMakie, ProgressMeter, BayesianTomography, HDF5
 includet("../../Utils/basis.jl")
-includet("../../Utils/incomplete_measurements.jl")
+includet("../../Utils/obstructions.jl")
 includet("../../Utils/position_operators.jl")
 
-function average_cov_bound(θs, rs, basis_func, obstruction_func, args...; kwargs...)
+function average_cov_bound(θs, rs, measurement, obstruction_func, args...; kwargs...)
     I = get_valid_indices(rs, rs, obstruction_func, args...; kwargs...)
-    povm = assemble_position_operators(rs, rs, basis_func)[I]
-    L = transform_incomplete_povm!(povm)
-    problem = StateTomographyProblem(povm)
+    problem = StateTomographyProblem(measurement[I])
 
-    mean(sum(inv, eigvals(incomplete_fisher(problem, θ, L))) for θ ∈ eachslice(θs, dims=2))
+    mean(sum(inv, eigvals(fisher(problem, θ))) for θ ∈ eachslice(θs, dims=2))
 end
 ##
 rs = LinRange(-2.2f0, 2.2f0, 256)
 basis_func = positive_l_basis(2, [0.0f0, 0, 1, 1])
+measurement = assemble_position_operators(rs, rs, basis_func)
 
 ρs = h5open("Data/template.h5") do file
     read(file, "labels_dim2")
@@ -22,7 +21,7 @@ end
 θs = stack(gell_mann_projection(ρ) for ρ ∈ eachslice(ρs, dims=3))
 ##
 radius = LinRange(0.4f0, 2.0f0, 200)
-bounds = [average_cov_bound(θs, rs, basis_func, iris_obstruction, 0, 0, radius) for radius in radius]
+bounds = [average_cov_bound(θs, rs, measurement, iris_obstruction, 0, 0, radius) for radius in radius]
 ##
 with_theme(theme_latexfonts()) do
     fig = Figure(fontsize=24)
@@ -39,7 +38,7 @@ with_theme(theme_latexfonts()) do
 end
 ##
 xb = LinRange(-1.5, 2, 200)
-bounds = [average_cov_bound(θs, rs, basis_func, blade_obstruction, xb) for xb in xb]
+bounds = [average_cov_bound(θs, rs, measurement, blade_obstruction, xb) for xb in xb]
 ##
 with_theme(theme_latexfonts()) do
     fig = Figure(fontsize=24)

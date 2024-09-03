@@ -11,7 +11,7 @@ converted_lims = read(file["converted_lims"])
 direct_x, direct_y = get_grid(direct_lims, (64, 64))
 converted_x, converted_y = get_grid(converted_lims, (64, 64))
 ##
-order = 1
+order = 2
 
 histories = file["histories_order$order"] |> read
 coefficients = read(file["labels_order$order"])
@@ -27,7 +27,7 @@ problem = StateTomographyProblem(operators)
 mthd = BayesianInference(problem)
 
 ##
-m = 1
+m = 5
 outcomes = complete_representation(History(view(histories, 1:2048, m)), (64, 64, 2))
 ρ_pred, θ_pred, cov = prediction(outcomes, mthd)
 ψ = project2pure(ρ_pred)
@@ -36,14 +36,8 @@ outcomes = complete_representation(History(view(histories, 1:2048, m)), (64, 64,
 ρ = coefficients[:, m] * coefficients[:, m]'
 θ = gell_mann_projection(ρ)
 
-
-ρ_pred
-ρ
-
-grad = FiniteDiff.finite_difference_gradient(x -> fidelity(x, ρ), θ_pred)
-
-fidelity(ρ_pred, ρ), 1.96 * √dot(grad, cov, grad)
-
+fidelity(ρ_pred, ρ)
+##
 
 
 real(tr((ρ - ρ_pred)^2)), 1.96 * √(2 * cov ⋅ cov)

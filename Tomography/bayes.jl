@@ -24,12 +24,12 @@ astig_operators = assemble_position_operators(converted_x, converted_y, basis)
 unitary_transform!(astig_operators, mode_converter)
 operators = compose_povm(direct_operators, astig_operators);
 problem = StateTomographyProblem(operators)
-mthd = BayesianInference(problem)
+mthd = MaximumLikelihood(problem)
 
 ##
 m = 5
 outcomes = complete_representation(History(view(histories, 1:2048, m)), (64, 64, 2))
-ρ_pred, θ_pred, cov = prediction(outcomes, mthd)
+ρ_pred, θ_pred,  = prediction(outcomes, mthd)
 ψ = project2pure(ρ_pred)
 ρ_pred = ψ * ψ'
 θ_pred = gell_mann_projection(ψ * ψ')
@@ -60,12 +60,12 @@ for (k, order) ∈ enumerate(orders)
     unitary_transform!(astig_operators, mode_converter)
     operators = compose_povm(direct_operators, astig_operators)
     problem = StateTomographyProblem(operators)
-    mthd = BayesianInference(problem)
+    mthd = MaximumLikelihood(problem)
 
-    for m ∈ 1:50
+    Threads.@threads for m ∈ 1:50
         for n ∈ eachindex(photocounts)
             outcomes = complete_representation(History(view(histories, 1:photocounts[n], m)), (64, 64, 2))
-            ρ_pred, θ_pred, cov = prediction(outcomes, mthd)
+            ρ_pred, θ_pred,  = prediction(outcomes, mthd)
             ψ = project2pure(ρ_pred)
             ρ_pred = ψ * ψ'
             θ_pred = gell_mann_projection(ρ_pred)
@@ -73,8 +73,8 @@ for (k, order) ∈ enumerate(orders)
             θ = gell_mann_projection(ρ)
 
             all_fids[n, m, k] = fidelity(ρ, ρ_pred)
-            grad = FiniteDiff.finite_difference_gradient(θ -> fidelity(ρ, θ), θ_pred)
-            all_errors[n, m, k] = 1.96 * dot(grad, cov, grad)
+            #grad = FiniteDiff.finite_difference_gradient(θ -> fidelity(ρ, θ), θ_pred)
+            #all_errors[n, m, k] = 1.96 * dot(grad, cov, grad)
             #all_fids[n, m, k] = mapreduce((x, y) -> abs2(x - y), +, θ_pred, θ)
             #all_errors[n, m, k] = 1.28 * sqrt(2 * (cov ⋅ cov))
             next!(p)
@@ -83,7 +83,7 @@ for (k, order) ∈ enumerate(orders)
 end
 
 fids = dropdims(mean(all_fids, dims=2), dims=2)
-errors = dropdims(mean(all_errors, dims=2), dims=2)
+#errors = dropdims(mean(all_errors, dims=2), dims=2)
 ##
 fig = Figure()
 ax = Axis(fig[1, 1],

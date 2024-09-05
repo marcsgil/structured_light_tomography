@@ -2,7 +2,7 @@ using BayesianTomography, HDF5, ProgressMeter, LinearAlgebra
 using CairoMakie
 includet("../Utils/basis.jl")
 includet("../Utils/position_operators.jl")
-includet("../Utils/incomplete_measurements.jl")
+includet("../Utils/obstructions.jl")
 includet("../Utils/model_fitting.jl")
 ##
 relu(x, y) = x > y ? x - y : zero(x)
@@ -14,7 +14,7 @@ function load_data(path, key)
     end
 end
 
-path = "Data/Raw/blade_new.h5"
+path = "Data/Raw/blade_xb=-2.h5"
 saving_path = "Results/Intense/blade.h5"
 
 calibration = h5open(path) do file
@@ -30,10 +30,13 @@ fit = surface_fit(gaussian_model, x, y, calibration, p0)
 fit.param
 basis = positive_l_basis(2, fit.param)
 ##
-N = 3
+N = 1
 
 metrics = Matrix{Float64}(undef, 100, N)
 errors = Matrix{Float64}(undef, 100, N)
+
+metric = zeros(Float64, N)
+pars = Vector{Float64}(undef, N)
 
 for n ∈ 1:N
     images, ρs, par = load_data(path, "images_$n")
@@ -41,7 +44,6 @@ for n ∈ 1:N
 
     Is = get_valid_indices(x, y, blade_obstruction, x[Int(par[1])])
     povm = assemble_position_operators(x, y, basis)[Is]
-    L = transform_incomplete_povm!(povm)
     problem = StateTomographyProblem(povm)
     mthd = LinearInversion(problem)
 
@@ -50,25 +52,28 @@ for n ∈ 1:N
     θs = Array{Float32}(undef, 3, 2, size(images)[end])
     covs = Array{Float32}(undef, 3, 3, size(images)[end])
 
-    Threads.@threads for m ∈ axes(images, 3)
+    for m ∈ axes(images, 3)
         probs = images[:, :, m][Is]
         ρ = ρs[:, :, m]
         θ = gell_mann_projection(ρ)
         pred_ρ, pred_θ, cov = prediction(probs, mthd)
-        density_matrix_transform!(pred_ρ, inv(L))
-        gell_mann_projection!(pred_θ, pred_ρ)
 
         θs[:, 1, m] = θ
         θs[:, 2, m] = pred_θ
-        covs[:, :, m] = cov
+        covs[:, :, m] .= cov
+
+        metric[n] += fidelity(ρ, pred_ρ) / size(images, 3)
     end
 
-    h5open(saving_path, "cw") do file
+    """h5open(saving_path, "cw") do file
         file["thetas_$n"] = θs
         file["covs_$n"] = covs
-    end
+    end"""
 end
 
+metric
+
+##
 h5open(saving_path, "cw") do file
     file["blade_pos"] = pars
 end

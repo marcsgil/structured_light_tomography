@@ -191,7 +191,7 @@ function prompt_blade_measurement(saving_path, ρs, n_masks, w, camera, slm, con
         end
     end
 
-    display_calibration(w, slm, config)
+    display_calibration(2w, slm, config)
 
     should_quit = false
     while !should_quit

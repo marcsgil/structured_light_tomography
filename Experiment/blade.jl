@@ -33,17 +33,17 @@ camera = XimeaCamera(
     "downsampling" => "XI_DWN_2x2",
     "width" => 200,
     "height" => 200,
-    "offsetX" => 60,
-    "offsetY" => 232,
-    "exposure" => 35,
+    "offsetX" => 92,
+    "offsetY" => 308,
+    "exposure" => 100,
 )
 ##
-saving_path = "../Data/Raw/blade_new.h5"
+saving_path = "../Data/Raw/blade_xb=-2.h5"
 
 n_masks = 200
 
 ρs = h5open("../Data/template.h5") do file
-    file["labels_dim2"][:, :, 1:100]
+    file["labels_dim2"][:, :, :]
 end
 ##
 prompt_calibration(saving_path, w, camera, slm, config)
@@ -52,4 +52,14 @@ prompt_blade_measurement(saving_path, ρs, n_masks, w, camera, slm, config; slee
 ##
 h5open(saving_path) do file
     @show keys(file)
+    #delete_object(file, "images_2")
 end
+##
+
+images = h5open(saving_path) do file
+    file["images_2"] |> read
+end
+
+visualize(images[:,:,3])
+
+maximum(images) |> Int

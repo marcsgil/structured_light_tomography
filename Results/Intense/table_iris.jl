@@ -23,10 +23,10 @@ for m ∈ axes(metrics, 2)
     end
 end
 ##
-J = sortperm(radius)
+J = sortperm(radius) |> reverse
 
 mean_metrics = mean(metrics, dims=1)[J]
-mean_errors = mean(errors, dims=1)[J]
+mean_errors = std(metrics, dims=1)[J]
 mean_errors = map(mean_errors) do x
     round(x, sigdigits=1)
 end

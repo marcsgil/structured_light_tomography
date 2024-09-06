@@ -2,7 +2,7 @@ using HDF5, PrettyTables
 includet("../../Utils/metrics.jl")
 sigdigits(x) = -floor(Int, log10(x))
 ##
-metrics = Matrix{Float32}(undef, 100, 3)
+metrics = Matrix{Float32}(undef, 100, 4)
 errors = similar(metrics)
 blade_pos = h5open("Results/Intense/blade.h5") do file
     read(file["blade_pos"])
@@ -23,10 +23,10 @@ for m ∈ axes(metrics, 2)
     end
 end
 ##
-J = sortperm(blade_pos)
+J = sortperm(blade_pos) |> reverse
 
 mean_metrics = mean(metrics, dims=1)[J]
-mean_errors = mean(errors, dims=1)[J]
+mean_errors = std(metrics, dims=1)[J]
 mean_errors = map(mean_errors) do x
     round(x, sigdigits=1)
 end

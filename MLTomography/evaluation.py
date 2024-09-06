@@ -1,7 +1,9 @@
-from h5py import File
+import os
+os.environ["KERAS_BACKEND"] = "jax"
 import keras
 import numpy as np
-import torch
+from h5py import File
+
 
 with File("../Data/Raw/positive_l.h5") as file:
     x = file["images_dim2"][:].astype("float32")

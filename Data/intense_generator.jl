@@ -13,7 +13,7 @@ basis = stack(f(x,y) for x in rs, y in rs, f ∈ basis_func)
 dest = Array{Float32}(undef, length(rs), length(rs), size(θs, 2))
 
 generate_dataset!(dest, basis, ρs)
-#add_noise!(dest)
+add_noise!(dest)
 
 h5open("Data/Training/positive_l.h5", "cw") do file
     file["images"] = dest

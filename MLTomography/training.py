@@ -1,4 +1,4 @@
-import MLTomography.models_keras as models_keras
+import models as models
 import keras.layers as layers
 import keras
 import numpy as np
@@ -10,7 +10,7 @@ os.environ["KERAS_BACKEND"] = "jax"
 num_classes = 3
 input_shape = (1, 64, 64)
 
-model = models_keras.LeNet5(input_shape, num_classes)
+model = models.LeNet5(input_shape, num_classes)
 
 x, y = load_hdf5_dataset("../Data/Training/positive_l.h5", expand_dims_axis=1)
 
@@ -20,7 +20,7 @@ model.compile(
 )
 
 batch_size = 128
-epochs = 30
+epochs = 200
 
 callbacks = [
     keras.callbacks.ModelCheckpoint(

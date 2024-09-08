@@ -2,7 +2,7 @@ using BayesianTomography, HDF5, ProgressMeter, LinearAlgebra, FiniteDiff
 using CairoMakie
 includet("../Utils/basis.jl")
 includet("../Utils/position_operators.jl")
-includet("../Utils/incomplete_measurements.jl")
+includet("../Utils/obstructions.jl")
 includet("../Utils/model_fitting.jl")
 includet("../Utils/metrics.jl")
 ##
@@ -56,16 +56,16 @@ for n ∈ eachindex(dims)
 
         θs[:, 1, m] = θ
         θs[:, 2, m] = pred_θ
-        covs[:, :, m] = cov
+        covs[:, :, m] .= cov
+
+        metrics[m, n] = fidelity(ρ, pred_ρ)
     end
 
-    h5open(saving_path, "cw") do file
+    """h5open(saving_path, "cw") do file
         file["thetas_dim$(dims[n])"] = θs
         file["covs_dim$(dims[n])"] = covs
-    end
+    end"""
 end
-
-mean(metrics, dims=1)
 
 ##mean(errors, dims=1)
 ##

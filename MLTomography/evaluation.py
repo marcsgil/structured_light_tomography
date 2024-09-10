@@ -7,17 +7,19 @@ os.environ["KERAS_BACKEND"] = "jax"
 import keras
 from keras.models import load_model
 
-with File("../Data/Raw/positive_l.h5") as file:
+"""with File("../Data/Raw/positive_l.h5") as file:
     obj = file["images_dim2"]
 
     x = obj[:].astype("float32")
-    rho = obj.attrs["density_matrices"]
+    rho = obj.attrs["density_matrices"]"""
 
-x = np.expand_dims(x, 1)
+with File('../Data/Processed/mixed_intense.h5') as f:
+    x = f['images_order1'][:]
+    rho = np.conj(f[f'labels_order1'][:])
 
-x -= 2
-N = x.sum(axis=(-1, -2), keepdims=True)
-x = x / N
+mu = x.mean(axis=(-1, -2), keepdims=True)
+sigma = x.std(axis=(-1, -2), keepdims=True)
+x = (x - mu) / sigma
 
 
 model = load_model("TrainedModels/best_model.keras")

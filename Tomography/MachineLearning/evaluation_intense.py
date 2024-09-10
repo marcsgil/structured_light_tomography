@@ -13,8 +13,8 @@ def X_matrix(j,k,d):
 
 def Y_matrix(j,k,d):
     Y = np.zeros((d,d),dtype=complex)
-    Y[j,k] = -1j
-    Y[k,j] = 1j
+    Y[j,k] = 1j
+    Y[k,j] = -1j
     return Y / la.norm(Y)
 
 def Z_matrix(j,d):
@@ -56,15 +56,15 @@ def crop_indices(width, height, xmin, xmax, ymin, ymax, Xmin, Xmax, Ymin, Ymax):
     
     return max(upper, 1),min(lower,height),max(left,1),min(right,width)
 
-with h5py.File('Data/Processed/mixed_intense.h5') as f:
+with h5py.File('../Data/Processed/mixed_intense.h5') as f:
     direct_lims = f['direct_lims'][:]
     converted_lims = f['converted_lims'][:]
     images = f['images_order1'][:]
 
 fidelities = np.zeros((5,100))
 
-for (k, order) in enumerate(range(1,6)):
-    with h5py.File('Data/Processed/mixed_intense.h5') as f:
+for (k, order) in enumerate(range(1,2)):
+    with h5py.File('../Data/Processed/mixed_intense.h5') as f:
         direct_lims = f['direct_lims'][:]
         converted_lims = f['converted_lims'][:]
 
@@ -89,7 +89,8 @@ for (k, order) in enumerate(range(1,6)):
         labels_exp = f[f'labels_order{order}'][:]
                         
 
-    model = torch.load(f"Results/MachineLearningModels/Intense/Order{order}/checkpoint.pt").to(device)
+    #model = torch.load(f"../Results/MachineLearningModels/Intense/Order{order}/checkpoint.pt").to(device)
+    model = torch.load(f"../MLTomography/TrainedModels/checkpoint.pt").to(device)
 
     with torch.no_grad():
         labels_pred = model(images_exp).cpu().numpy()
@@ -99,9 +100,11 @@ for (k, order) in enumerate(range(1,6)):
 
     fidelities[k] = np.array([fidelity(sigmas[n], labels_exp[n]) for n in range(100)])
 
+    print(labels_pred[50])
+
 print(fidelities.mean(axis=1))
 print(fidelities.std(axis=1))
 
-with h5py.File('Results/Intense/machine_learning.h5', 'w-') as f:
+"""with h5py.File('Results/Intense/machine_learning.h5', 'w-') as f:
     f["fids"] = fidelities.mean(axis=1)
-    f["fids_std"] = fidelities.std(axis=1)
+    f["fids_std"] = fidelities.std(axis=1)"""

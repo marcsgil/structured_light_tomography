@@ -17,23 +17,6 @@ function complex_representation(y, ::PureState)
     @. @views y[1:end÷2, :] + im * y[end÷2+1:end, :]
 end
 
-"""function generate_dataset(ψs, rs, angle, ::PureState)
-    basis = transverse_basis(rs, rs, rs, rs, size(ψs, 1) - 1, angle)
-
-    x = Array{Float32}(undef, length(rs), length(rs), 2, size(ψs, 2))
-
-    Threads.@threads for k ∈ axes(ψs, 2)
-        label2image!(view(x, :, :, :, k), view(ψs, :, k), basis)
-    end
-
-    x, real_representation(ψs, PureState())
-end
-
-function generate_dataset(order, N_images, rs, angle, ::PureState)
-    ψs = BayesianTomography.sample(HaarVector(order + 1), N_images)
-    generate_dataset(ψs, rs, angle, PureState())
-end"""
-
 function generate_dataset!(dest, basis, ψs::AbstractMatrix)
     @tullio dest[x, y, n] = basis[x, y, r] * conj(basis[x, y, s]) * ψs[r, n] * ψs[s, n] |> real
 end

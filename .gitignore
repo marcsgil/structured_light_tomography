@@ -7,3 +7,5 @@ poetry.lock
 Data/Processed
 Data/Training
 /.CondaPkg
+*/logs
+*/TrainedModels

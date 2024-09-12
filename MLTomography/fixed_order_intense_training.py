@@ -8,7 +8,7 @@ epochs = 300
 
 for order in range(1, 6):
     print(f"Training model for order {order}")
-    with h5py.File('../Data/Training/mixed_intense.h5', 'r') as f:
+    with h5py.File('../Data/Training/fixed_order_intense.h5', 'r') as f:
         x = f[f'images_order{order}'][:]
         y = f[f'labels_order{order}'][:]
 
@@ -17,25 +17,28 @@ for order in range(1, 6):
     x = (x - mu) / sigma
 
     num_classes = (order + 1)**2 - 1
-    model = models.DefaultConvNet(input_shape, num_classes)
-    model.compile(
-        loss=keras.losses.MeanSquaredError(),
-        optimizer=keras.optimizers.Adam(amsgrad=True),
-    )
 
-    callbacks = [
-        keras.callbacks.ModelCheckpoint(
-            filepath=f"TrainedModels/FixedOrderIntense/order{order}.keras", save_best_only=True),
-        keras.callbacks.EarlyStopping(patience=40),
-        keras.callbacks.TensorBoard(
-            log_dir=f"./logs/FixedOrderIntense/order{order}"),
-    ]
 
-    model.fit(
-        x,
-        y,
-        batch_size=batch_size,
-        epochs=epochs,
-        validation_split=0.15,
-        callbacks=callbacks,
-    )
+    for trial in range(1,2):
+        model = models.DefaultConvNet(input_shape, num_classes)
+        model.compile(
+            loss=keras.losses.MeanSquaredError(),
+            optimizer=keras.optimizers.Adam(amsgrad=True),
+        )
+
+        callbacks = [
+            keras.callbacks.ModelCheckpoint(
+                filepath=f"TrainedModels/FixedOrderIntense/order{order}_trial{trial}.keras", save_best_only=True),
+            keras.callbacks.EarlyStopping(patience=40),
+            keras.callbacks.TensorBoard(
+                log_dir=f"./logs/FixedOrderIntense/order{order}/trial{trial}"),
+        ]
+
+        model.fit(
+            x,
+            y,
+            batch_size=batch_size,
+            epochs=epochs,
+            validation_split=0.15,
+            callbacks=callbacks,
+        )

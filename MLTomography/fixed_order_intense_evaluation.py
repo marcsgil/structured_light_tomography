@@ -21,7 +21,7 @@ with File('../Data/Processed/mixed_intense.h5') as f:
     direct_lims = f['direct_lims'][:]
     converted_lims = f['converted_lims'][:]
 
-for order in range(5, 6):
+for order in range(1, 2):
     R = 2.5 + 0.5*order
     upper_d, lower_d, left_d, right_d = crop_indices(
         400, 400, *direct_lims, -R, R, -R, R)
@@ -40,7 +40,7 @@ for order in range(5, 6):
     sigma = x.std(axis=(-1, -2), keepdims=True)
     x = (x - mu) / sigma
 
-    model = load_model(f"TrainedModels/FixedOrderIntense/batch512/order5.keras")
+    model = load_model(f"TrainedModels/FixedOrderIntense/order{order}.keras")
 
     y_pred = np.array(model(x))
 

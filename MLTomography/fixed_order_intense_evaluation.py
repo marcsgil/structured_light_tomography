@@ -17,21 +17,21 @@ def crop_indices(width, height, xmin, xmax, ymin, ymax, Xmin, Xmax, Ymin, Ymax):
     return max(upper, 1), min(lower, height), max(left, 1), min(right, width)
 
 
-with File('../Data/Processed/mixed_intense.h5') as f:
+with File('../Data/Processed/fixed_order_intense.h5') as f:
     direct_lims = f['direct_lims'][:]
     converted_lims = f['converted_lims'][:]
 
-for order in range(1, 2):
+for order in range(1, 6):
     R = 2.5 + 0.5*order
     upper_d, lower_d, left_d, right_d = crop_indices(
         400, 400, *direct_lims, -R, R, -R, R)
     upper_c, lower_c, left_c, right_c = crop_indices(
         400, 400, *converted_lims, -R, R, -R, R)
 
-    with File('../Data/Processed/mixed_intense.h5') as f:
-        direct = keras.layers.Resizing(64, 64, data_format='channels_first')(
+    with File('../Data/Processed/fixed_order_intense.h5') as f:
+        direct = keras.layers.Resizing(64, 64)(
             f[f'images_order{order}'][:, 0, upper_d:lower_d, left_d:right_d])
-        converted = keras.layers.Resizing(64, 64, data_format='channels_first')(
+        converted = keras.layers.Resizing(64, 64)(
             f[f'images_order{order}'][:, 1, upper_c:lower_c, left_c:right_c])
         rho = np.conj(f[f'labels_order{order}'][:])
 
@@ -40,7 +40,7 @@ for order in range(1, 2):
     sigma = x.std(axis=(-1, -2), keepdims=True)
     x = (x - mu) / sigma
 
-    model = load_model(f"TrainedModels/FixedOrderIntense/order{order}.keras")
+    model = load_model(f"TrainedModels/FixedOrderIntense/order{order}_trial1.keras")
 
     y_pred = np.array(model(x))
 

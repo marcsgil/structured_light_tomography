@@ -19,7 +19,7 @@ for order in range(1, 6):
 
     num_classes = (order + 1)**2 - 1
 
-    for trial in range(1, 2):
+    for trial in range(2, 6):
         model = models.DefaultConvNet(input_shape, num_classes)
         model.compile(
             loss=keras.losses.MeanSquaredError(),

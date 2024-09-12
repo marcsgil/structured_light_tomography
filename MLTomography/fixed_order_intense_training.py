@@ -1,6 +1,7 @@
 import models
 import keras
 import h5py
+import os
 
 input_shape = (2, 64, 64)
 batch_size = 64
@@ -18,20 +19,21 @@ for order in range(1, 6):
 
     num_classes = (order + 1)**2 - 1
 
-
-    for trial in range(1,2):
+    for trial in range(1, 2):
         model = models.DefaultConvNet(input_shape, num_classes)
         model.compile(
             loss=keras.losses.MeanSquaredError(),
             optimizer=keras.optimizers.Adam(amsgrad=True),
         )
 
+        logger_path = f"./logs/FixedOrderIntense/order{order}_trial{trial}.csv"
+        os.makedirs(os.path.dirname(logger_path), exist_ok=True)
+
         callbacks = [
             keras.callbacks.ModelCheckpoint(
                 filepath=f"TrainedModels/FixedOrderIntense/order{order}_trial{trial}.keras", save_best_only=True),
             keras.callbacks.EarlyStopping(patience=40),
-            keras.callbacks.TensorBoard(
-                log_dir=f"./logs/FixedOrderIntense/order{order}/trial{trial}"),
+            keras.callbacks.CSVLogger(logger_path),
         ]
 
         model.fit(

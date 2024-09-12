@@ -1,6 +1,7 @@
 import models
 import keras
 import h5py
+import os
 
 input_shape = (2, 64, 64)
 batch_size = 64
@@ -42,12 +43,14 @@ for order in range(1, 5):
             optimizer=keras.optimizers.Adam(amsgrad=True),
         )
 
+        logger_path = f"./logs/FixedOrderPhotocount/order{order}"
+        os.makedirs(os.path.dirname(logger_path), exist_ok=True)
+
         callbacks = [
             keras.callbacks.ModelCheckpoint(
                 filepath=f"TrainedModels/FixedOrderPhotocount/order{order}/{pc}_photocounts.keras", save_best_only=True),
             keras.callbacks.EarlyStopping(patience=40),
-            keras.callbacks.TensorBoard(
-                log_dir=f"./logs/FixedOrderPhotocount/order{order}/{pc}_photocounts"),
+            keras.callbacks.CSVLogger(logger_path),
         ]
 
         model.fit(

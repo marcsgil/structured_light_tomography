@@ -1,39 +1,20 @@
 using CoherentNoise, Augmentor, Distributions,
-    Tullio, LinearAlgebra, Images, HDF5, BayesianTomography
-
-struct PureState end
-
-function real_representation(ψs, ::PureState)
-    #Represents the coeficients ψ as a real array.
-    #We stack the real and then the imaginary part.
-    D = size(ψs, 1)
-    result = Array{real(eltype(ψs))}(undef, 2D, size(ψs, 2))
-    result[1:D, :] = real.(@view ψs[1:end, :])
-    result[D+1:2D, :] = imag.(@view ψs[1:end, :])
-    result
-end
-
-function complex_representation(y, ::PureState)
-    @. @views y[1:end÷2, :] + im * y[end÷2+1:end, :]
-end
+    Tullio, LinearAlgebra, Images, BayesianTomography
 
 function generate_dataset!(dest, basis, ψs::AbstractMatrix)
-    @tullio dest[x, y, n] = basis[x, y, r] * conj(basis[x, y, s]) * ψs[r, n] * ψs[s, n] |> real
+    @tullio dest[x, y, n] = basis[x, y, r] * conj(basis[x, y, s]) * ψs[r, n] * conj(ψs[s, n]) |> real
 end
 
 function generate_dataset!(dest, basis, ρs)
     @tullio dest[x, y, n] = basis[x, y, r] * conj(basis[x, y, s]) * ρs[r, s, n] |> real
 end
 
-
 #Photocounting
-function sample_photons!(images, N_photons, direct_prob=0.5)
-    N = sum(images, dims=(1, 2))
+function sample_photons!(images, N_photons; dims=3)
+    N = sum(images, dims=Tuple(i for i in 1:ndims(arr) if i ∉ dims))
     images ./= N
-    images[:, :, 1, :] .*= direct_prob
-    images[:, :, 2, :] .*= 1 - direct_prob
 
-    Threads.@threads for image in eachslice(images, dims=4)
+    Threads.@threads for image in eachslice(images; dims)
         simulate_outcomes!(image, N_photons)
     end
 end

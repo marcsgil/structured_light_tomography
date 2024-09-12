@@ -9,9 +9,8 @@ dependencies = [
     "juliacall>=0.9.23",
     "juliapkg>=0.1.13",
     "ipykernel>=6.29.5",
-    "torch>=2.4.1",
-    "torchvision>=0.19.1",
     "keras>=3.5.0",
     "jax[cuda12]>=0.4.31",
     "tensorboard>=2.17.1",
+    "tensorflow>=2.17.0",
 ]

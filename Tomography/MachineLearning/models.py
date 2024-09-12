@@ -59,11 +59,6 @@ def out_res(n_blocks, H, W):
     return H, W
 
 
-class Flatten1(nn.Module):
-    def forward(self, input):
-        return nn.Flatten(input, 1)
-
-
 class ConvNet(nn.Module):
     def __init__(self, H, W, input_channels, nclasses, out_channels, kernel_size, activation, out_connected_layers):
         super(ConvNet, self).__init__()

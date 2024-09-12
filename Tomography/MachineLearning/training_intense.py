@@ -25,8 +25,8 @@ def format_data(x):
         ])(x).to(device)
     return X
 
-for order in range(1,2):
-    model = models.LeNet(64,64,2, (order + 1)**2 - 1).to(device)
+for order in range(5,6):
+    model = models.DefaultConvNet(64,64,2, (order + 1)**2 - 1).to(device)
 
     with h5py.File('../Data/Training/mixed_intense.h5', 'r') as f:
             images = format_data(f[f'images_order{order}'][:])
@@ -44,10 +44,11 @@ for order in range(1,2):
     loss_fn = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), amsgrad=True)
 
-    save_path = f"TrainedModels"
+    save_path = f"TrainedModels/FixedOrderIntense/order{order}"
 
     writer = SummaryWriter(save_path)
     early_stopping = training.EarlyStopping(patience=40,save_path=save_path)
+
     for t in range(200):
         epoch = t+1
         print(f"-------------------------------\nEpoch {epoch}")

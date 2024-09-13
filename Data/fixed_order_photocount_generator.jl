@@ -6,7 +6,7 @@ include("../Utils/pure_state_utils.jl")
 
 dest = Array{Float32}(undef, 64, 64, 2, 10^5)
 
-orders = 1:1
+orders = 1:4
 photocounts = [2^k for k ∈ 6:11]
 p = Progress(length(orders) * length(photocounts))
 
@@ -38,13 +38,3 @@ for order ∈ orders
     end
 end
 finish!(p)
-##
-using CairoMakie, StructuredLight
-visualize(dest[:,:,1,3])
-
-sum(dest[:,:,:,1])
-##
-using HDF5
-h5open("Data/Training/fixed_order_photocount.h5") do file
-    size(file["labels_order1/2048_photocounts"])
-end

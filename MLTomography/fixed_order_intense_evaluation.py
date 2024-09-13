@@ -40,14 +40,15 @@ for order in range(1, 6):
     sigma = x.std(axis=(-1, -2), keepdims=True)
     x = (x - mu) / sigma
 
-    model = load_model(f"TrainedModels/FixedOrderIntense/order{order}_trial1.keras")
+    for trial in range(1,6):
+        model = load_model(f"TrainedModels/FixedOrderIntense/order{order}_trial{trial}.keras")
 
-    y_pred = np.array(model(x))
+        y_pred = np.array(model(x))
 
-    fids = np.empty(rho.shape[0], dtype="float32")
+        fids = np.empty(rho.shape[0], dtype="float32")
 
-    for n in np.arange(len(fids)):
-        rho_pred = jl.density_matrix_reconstruction(y_pred[n])
-        fids[n] = jl.fidelity(rho[n], rho_pred)
+        for n in np.arange(len(fids)):
+            rho_pred = jl.density_matrix_reconstruction(y_pred[n])
+            fids[n] = jl.fidelity(rho[n], rho_pred)
 
-    print(fids.mean())
+        print(f'Order {order}; trial {trial}:' , fids.mean(), '+-', fids.std())

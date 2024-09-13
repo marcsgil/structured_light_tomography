@@ -5,12 +5,12 @@ from loss import fidelity_loss
 import os
 
 input_shape = (2, 64, 64)
-batch_size = 64
+batch_size = 256
 epochs = 300
 
 
-for order in range(1, 5):
-    for pc in [2**i for i in range(11, 12)]:
+for order in range(1, 2):
+    for pc in [2**i for i in range(6, 12)]:
         print(f"Training model for order {order} and {pc} photocounts")
         with h5py.File('../Data/Training/fixed_order_photocount.h5', 'r') as f:
             x = f[f'images_order{order}/{pc}_photocounts'][:]
@@ -22,15 +22,15 @@ for order in range(1, 5):
 
         num_classes = 2 * (order + 1)
 
-
-        for trial in range(1,2):
+        for trial in range(1, 2):
             model = models.DefaultConvNet(input_shape, num_classes)
             model.compile(
                 loss=fidelity_loss,
                 optimizer=keras.optimizers.Adam(amsgrad=True),
             )
 
-            logger_path = f"./logs/FixedOrderPhotocount/order{order}_{pc}_photocounts_trial{trial}.csv"
+            logger_path = f"./logs/FixedOrderPhotocount/order{
+                order}_{pc}_photocounts_trial{trial}.csv"
             os.makedirs(os.path.dirname(logger_path), exist_ok=True)
 
             callbacks = [

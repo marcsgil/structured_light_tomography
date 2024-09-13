@@ -25,7 +25,7 @@ def format_data(x):
         ])(x).to(device)
     return X
 
-for order in [3,4]:
+for order in [1,2]:
      for pc in [2**k for k in range(11,12)]:
         model = models.DefaultConvNet(64,64,2, 2 * (order + 1)).to(device)
         #model = models.MobileNet(2 * (order + 1)).to(device)

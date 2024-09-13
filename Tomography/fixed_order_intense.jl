@@ -6,7 +6,7 @@ includet("../Utils/model_fitting.jl")
 includet("../Data/data_treatment_utils.jl")
 includet("../Utils/metrics.jl")
 
-input = h5open("Data/Processed/mixed_intense.h5")
+input = h5open("Data/Processed/fixed_order_intense.h5")
 
 direct_lims = read(input["direct_lims"])
 converted_lims = read(input["converted_lims"])
@@ -29,7 +29,8 @@ errors = Matrix{Float64}(undef, length(orders), 100)
     mode_converter = diagm([cis(-k * π / 6) for k ∈ 0:order])
     unitary_transform!(converted_povm, mode_converter)
     povm = compose_povm(direct_povm, converted_povm)
-    problem = StateTomographyProblem(povm)
+    display(sum(povm))
+    problem = StateTomographyProblem(Array.(Hermitian.(povm)))
     mthd = LinearInversion(problem)
 
     Threads.@threads for n ∈ axes(images, 4)

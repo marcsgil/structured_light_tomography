@@ -9,7 +9,7 @@ batch_size = 256
 epochs = 300
 
 
-for order in range(1, 2):
+for order in range(2, 5):
     for pc in [2**i for i in range(6, 12)]:
         with h5py.File('../Data/Training/fixed_order_photocount.h5', 'r') as f:
             x = f[f'images_order{order}/{pc}_photocounts'][:]

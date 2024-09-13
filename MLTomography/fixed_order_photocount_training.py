@@ -11,7 +11,6 @@ epochs = 300
 
 for order in range(1, 2):
     for pc in [2**i for i in range(6, 12)]:
-        print(f"Training model for order {order} and {pc} photocounts")
         with h5py.File('../Data/Training/fixed_order_photocount.h5', 'r') as f:
             x = f[f'images_order{order}/{pc}_photocounts'][:]
             y = f[f'labels_order{order}/{pc}_photocounts'][:]
@@ -23,6 +22,7 @@ for order in range(1, 2):
         num_classes = 2 * (order + 1)
 
         for trial in range(1, 2):
+            print(f"Training model for order {order}; {pc} photocounts; trial {trial}")
             model = models.DefaultConvNet(input_shape, num_classes)
             model.compile(
                 loss=fidelity_loss,

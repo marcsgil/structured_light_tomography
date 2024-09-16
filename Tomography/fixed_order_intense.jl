@@ -5,9 +5,6 @@ includet("../Utils/basis.jl")
 includet("../Utils/position_operators.jl")
 
 relu(x::T1, y::T2) where {T1,T2} = max(zero(promote_type(T1, T2)), x - y)
-relu(x, y) = x > y ? x - y : zero(x)
-
-relu(0, 0.5)
 
 function load_data(path, order, bgs)
     images, ρs = h5open(path) do file
@@ -35,17 +32,19 @@ end
 x = LinRange(-0.5, 0.5, size(calibration, 1))
 y = LinRange(-0.5, 0.5, size(calibration, 2))
 
-p0 = Float64.([0, 0, 0.1, 1, maximum(calibration), minimum(calibration)])
+p0 = Float64.([0, 0, 0.1, maximum(calibration), minimum(calibration)])
 
 fit_d = surface_fit(gaussian_model, x, y, calibration[:, :, 1], p0)
 fit_c = surface_fit(gaussian_model, x, y, calibration[:, :, 2], p0)
+
+fit_d.param
 ##
 orders = 1:5
 
 metrics = Matrix{Float64}(undef, length(orders), 100)
 
 @showprogress for (m, order) ∈ enumerate(orders)
-    images, ρs = load_data(path, order, (fit_d.param[6], fit_c.param[6]))
+    images, ρs = load_data(path, order, (fit_d.param[5], fit_c.param[5]))
 
     basis_d = fixed_order_basis(order, fit_d.param)
     basis_c = [(x, y) -> f(x, y) * cis(-(k - 1) * π / 6)
@@ -69,4 +68,9 @@ metrics = Matrix{Float64}(undef, length(orders), 100)
 end
 
 vec(mean(metrics, dims=2))
-vec(std(metrics, dims=2))
+##
+h5open("Results/Intense/fixed_order.h5", "cw") do file
+    file["mean_fid"] = mean(metrics, dims=1)
+    file["std_fid"] = std(metrics, dims=1)
+    file["orders"] = collect(orders)
+end

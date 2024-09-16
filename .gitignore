@@ -9,3 +9,4 @@ Data/Training
 /.CondaPkg
 */logs
 */TrainedModels
+Data/VectorBeam

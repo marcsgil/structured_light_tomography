@@ -25,10 +25,12 @@ end
 x = LinRange(-0.5, 0.5, size(calibration, 1))
 y = LinRange(-0.5, 0.5, size(calibration, 2))
 
-p0 = Float64.([0, 0, 0.1, 1, maximum(calibration), minimum(calibration)])
+p0 = Float64.([0, 0, 0.1, maximum(calibration), minimum(calibration)])
 fit = surface_fit(gaussian_model, x, y, calibration, p0)
 
-bg = round(UInt8, fit.param[6])
+bg = round(UInt8, fit.param[5])
+
+fit.param
 ##
 dims = 2:6
 
@@ -53,3 +55,8 @@ end
 
 mean(metrics, dims=1)
 ##
+h5open("Results/Intense/positive_l.h5", "cw") do file
+    file["mean_fid"] = mean(metrics, dims=1)
+    file["std_fid"] = std(metrics, dims=1)
+    file["dims"] = collect(dims)
+end

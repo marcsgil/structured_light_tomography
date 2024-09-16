@@ -1,5 +1,5 @@
 using CoherentNoise, Augmentor, Distributions,
-    Tullio, LinearAlgebra, Images, BayesianTomography
+    Tullio, LinearAlgebra, Images, BayesianTomography, ProgressMeter
 
 function generate_dataset!(dest, basis, ψs::AbstractMatrix)
     @tullio dest[x, y, n] = basis[x, y, r] * conj(basis[x, y, s]) * ψs[r, n] * conj(ψs[s, n]) |> real
@@ -61,23 +61,22 @@ function elastic_distortion!(x; elastic_width, elastic_scale=0.1)
 end
 
 function add_noise!(x; perlin_strength=0.3,
-    squeezing_distribution=truncated(Normal(0.2, 0.1); lower=0),
-    elastic_width=size(x, 1) ÷ 2, elastic_scale=0.1)
+    shear_angles=-15:5:15,
+    elastic_width=size(x, 1) ÷ 3, elastic_scale=0.1, dims=3)
 
-    if !isnothing(squeezing_distribution)
-        Threads.@threads for slice ∈ eachslice(x, dims=3)
-            squeeze!(slice, rand(squeezing_distribution))
-        end
-    end
+    pipeline = (
+        ShearX(shear_angles) * ShearY(shear_angles) * NoOp()
+        |> CropNative((axes(x, 1), axes(x, 2)))
+        |> ElasticDistortion(elastic_width; scale=elastic_scale)
+    )
 
-    if !iszero(perlin_strength)
-        Threads.@threads for image ∈ eachslice(x, dims=3)
-            noise = perlin_noise_field(size(x, 1), size(x, 2), perlin_strength)
-            image .*= noise
-        end
+    p = Progress(prod(size(x, dim) for dim ∈ dims))
+    Threads.@threads for slice ∈ eachslice(x; dims)
+        img = copy(slice)
+        noise = perlin_noise_field(size(x, 1), size(x, 2), perlin_strength)
+        img .*= noise
+        augment!(slice, img, pipeline)
+        next!(p)
     end
-
-    if !iszero(elastic_width)
-        elastic_distortion!(x; elastic_width, elastic_scale)
-    end
+    finish!(p)
 end

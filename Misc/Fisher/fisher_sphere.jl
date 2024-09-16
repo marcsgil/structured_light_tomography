@@ -1,6 +1,6 @@
 using StructuredLight, LinearAlgebra, CairoMakie, ProgressMeter, BayesianTomography
 includet("../../Utils/basis.jl")
-includet("../../Utils/incomplete_measurements.jl")
+includet("../../Utils/obstructions.jl")
 includet("../../Utils/position_operators.jl")
 
 using ColorSchemes
@@ -22,7 +22,6 @@ rs = LinRange(-2.2f0, 2.2f0, 256)
 basis_func = positive_l_basis(2, [0.0f0, 0, 1, 1])
 
 povm = assemble_position_operators(rs, rs, basis_func)
-L = transform_incomplete_povm!(povm)
 
 prob = StateTomographyProblem(povm)
 ##
@@ -41,7 +40,7 @@ p = Progress(length(Is))
 Threads.@threads for n ∈ eachindex(Is)
     I = Is[n]
     θ = θs[I[1], I[2]]
-    fisher_values[n] = sum(inv, eigvals(incomplete_fisher(prob, θ, L)))
+    fisher_values[n] = sum(inv, eigvals(fisher(prob, θ)))
     next!(p)
 end
 
@@ -87,12 +86,16 @@ with_theme(theme_latexfonts()) do
     fig
 end
 ##
-radius = 0.5f0
+radius = 1.07f0
+
+
 
 I = get_valid_indices(rs, rs, iris_obstruction, 0, 0, radius)
 
 povm = assemble_position_operators(rs, rs, basis_func)[I]
-L = transform_incomplete_povm!(povm)
+
+sum(povm)
+
 prob = StateTomographyProblem(povm)
 
 fisher_values_obs = Vector{Float32}(undef, length(Is))
@@ -101,7 +104,7 @@ p = Progress(length(Is))
 Threads.@threads for n ∈ eachindex(Is)
     I = Is[n]
     θ = θs[I[1], I[2]]
-    fisher_values_obs[n] = sum(inv, eigvals(incomplete_fisher(prob, θ, L)))
+    fisher_values_obs[n] = sum(inv, eigvals(fisher(prob, θ)))
     next!(p)
 end
 

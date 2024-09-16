@@ -12,8 +12,8 @@ function surface_fit(model, x, y, data, p0)
 end
 
 function gaussian_model(x, y, p)
-    x₀, y₀, w, α, amplitude, offset = p
-    offset + amplitude * abs2(hg(x - x₀, α * (y - y₀); w))
+    x₀, y₀, w, amplitude, offset = p
+    offset + amplitude * abs2(hg(x - x₀, y - y₀; w))
 end
 
 function blade_model(x, y, p)

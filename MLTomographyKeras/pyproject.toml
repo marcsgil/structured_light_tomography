@@ -11,4 +11,5 @@ dependencies = [
     "ipykernel>=6.29.5",
     "keras>=3.5.0",
     "jax[cuda12]>=0.4.31",
+    "matplotlib>=3.9.2",
 ]

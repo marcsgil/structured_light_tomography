@@ -9,9 +9,103 @@ model = get_model()
 ps, st = jldopen("Tomography/TrainingLogs/best_model.jld2") do file
     file["parameters"], file["states"]
 end |> gpu_device()
-##
+
+function scatter_and_errorbars!(ax, x, y, error, multiplier=1;
+    color,
+    marker,
+)
+    errorbars!(ax, x, y * multiplier, error * multiplier; color, whiskerwidth=12, linewidth=2)
+    scatter!(ax, x, y * multiplier; color, marker, markersize=20)
+end
+
+get_magnitude(x) = round(Int, log10(x))
+
+function make_plot(; waist_multiplier, waist, waist_std, waist_fit,
+    position_multiplier, x, x_std, x_fit, y, y_std, y_fit, saving_path="",
+    horizontal_values, horizontal_label)
+    with_theme(theme_latexfonts()) do
+        fig = Figure(fontsize=20)
+
+        mag = get_magnitude(waist_multiplier)
+        ax1 = CairoMakie.Axis(fig[1, 1],
+            xlabel=horizontal_label,
+            ylabel=L"w \ \left( \times 10^{-%$mag} \right)",
+        )
+
+        s1 = scatter_and_errorbars!(ax1, horizontal_values, waist, waist_std, waist_multiplier;
+            color=:green,
+            marker=:rect,
+        )
+
+        l1 = hlines!(ax1, waist_fit * waist_multiplier;
+            color=:green,
+            linestyle=:dash,
+            linewidth=3)
+
+        hidexdecorations!(ax1, grid=false)
+
+        mag = get_magnitude(position_multiplier)
+        ax2 = CairoMakie.Axis(fig[2, 1],
+            xlabel=horizontal_label,
+            ylabel=L"\mathbf{r}_0 \ \left(\times 10^{-%$mag}\right)",
+        )
+
+        s2 = scatter_and_errorbars!(ax2, horizontal_values, x, x_std, position_multiplier;
+            color=:red,
+            marker=:circle,
+        )
+
+        l2 = hlines!(ax2, x_fit * position_multiplier;
+            color=:red,
+            linestyle=:dot,
+            linewidth=3)
+
+        s3 = scatter_and_errorbars!(ax2, horizontal_values, y, y_std, position_multiplier;
+            color=:blue,
+            marker=:diamond,
+        )
+
+        l3 = hlines!(ax2, y_fit * position_multiplier;
+            color=:blue,
+            linestyle=:dashdot,
+            linewidth=3)
+
+        Legend(fig[:, 2], [s1, l1, s2, l2, s3, l3],
+            [
+                L"w^{NN}",
+                L"w^{LS}",
+                L"x^{NN}_0",
+                L"x_0^{LS}",
+                L"y^{NN}_0",
+                L"y_0^{LS}",
+            ])
+
+        rowgap!(fig.layout, 5)
+
+        if !isempty(saving_path)
+            save(saving_path, fig)
+        end
+
+        fig
+    end
+end
+
 relu(x::T1, y::T2) where {T1,T2} = x > y ? x - y : zero(promote_type(T1, T2))
 
+function get_formated_data(pars, pars_std, fit)
+    (
+        waist=pars[3, :],
+        waist_std=pars_std[3, :],
+        waist_fit=fit.param[3],
+        x=pars[1, :],
+        x_std=pars_std[1, :],
+        x_fit=fit.param[1],
+        y=pars[2, :],
+        y_std=pars_std[2, :],
+        y_fit=fit.param[2]
+    )
+end
+##
 function load_data(path, key)
     images, ρs = h5open(path) do file
         obj = file[key]
@@ -56,72 +150,11 @@ for (n, dim) ∈ enumerate(dims)
     pars[:, n] = mean(pred_pars, dims=2) |> cpu_device()
     pars_std[:, n] = std(pred_pars, dims=2) |> cpu_device()
 end
-relative_waist_error = @. abs.(pars[3, :] / fit.param[3] - 1) * 100
-relative_waist_error_std = @. pars_std[3, :] / fit.param[3] * 100
-x_difference = abs.(pars[1, :] .- fit.param[1])
-y_difference = abs.(pars[2, :] .- fit.param[2])
-x_difference_std = pars_std[1, :]
-y_difference_std = pars_std[2, :]
-
-with_theme(theme_latexfonts()) do
-    fig = Figure(fontsize=20)
-
-    ax1 = CairoMakie.Axis(fig[1, 1],
-        xlabel="Dimension",
-        ylabel=L"|\delta w| \ \left( \times 10^{-2} \right)",
-        yticks=0:2:10,
-    )
-    ylims!(ax1, 0, 10)
-
-    scatter!(ax1, dims, relative_waist_error,
-        color=:green,
-        markersize=16,
-        marker=:ltriangle,)
-    errorbars!(ax1, dims, relative_waist_error, relative_waist_error_std,
-        color=:green,
-        whiskerwidth=10)
-
-    text!(L"w^{LS} = %$(round(fit.param[3], sigdigits=4)) \pm %$(round(error[1], digits=4))",
-        position=(0.06, 0.82), fontsize=20, space=:relative)
-
-    hidexdecorations!(ax1, grid=false)
-
-    ax2 = CairoMakie.Axis(fig[2, 1],
-        xlabel="Dimension",
-        ylabel=L"|\Delta \mathbf{r}_0| \ \left(\times 10^{-3}\right)",
-    )
-
-    scatter!(ax2, dims, x_difference * 10^3,
-        color=:red,
-        markersize=16,
-        label=L"\Delta x_0^{NN}")
-    errorbars!(ax2, dims, x_difference * 10^3, x_difference_std * 10^3,
-        color=:red,
-        whiskerwidth=10)
-
-    scatter!(ax2, dims, y_difference * 10^3,
-        color=:blue,
-        markersize=16,
-        label=L"\Delta y_0^{NN}",
-        marker=:diamond)
-    errorbars!(ax2, dims, y_difference * 10^3, y_difference_std * 10^3,
-        color=:blue,
-        whiskerwidth=10)
-
-    text!(L"x_0^{LS} = (%$(round(10^3 * fit.param[1], digits=2)) \pm %$(round(10^3 * error[1], sigdigits=1))) \times 10^{-3}",
-        position=(0.2, 0.8), fontsize=20, space=:relative)
-    text!(L"y_0^{LS} = (%$(round(10^3 * fit.param[2], digits=2)) \pm %$(round(10^3 * error[2], sigdigits=1))) \times 10^{-3}",
-        position=(0.2, 0.65), fontsize=20, space=:relative)
 
 
-    axislegend(ax2, position=:lt, fontsize=24)
-
-    rowgap!(fig.layout, 5)
-
-    #save("Plots/positive_l_param.pdf", fig)
-
-    fig
-end
+make_plot(; waist_multiplier=10^2, position_multiplier=10^2, saving_path="",
+    horizontal_values=dims, horizontal_label="Dimension",
+    get_formated_data(pars, pars_std, fit)...)
 ##
 function load_data(path, order, bgs)
     images, ρs = h5open(path) do file
@@ -139,7 +172,7 @@ function load_data(path, order, bgs)
 
     images, ρs
 end
-##
+
 path = "Data/Raw/fixed_order_intense.h5"
 
 calibration = h5open(path) do file
@@ -154,16 +187,26 @@ p0 = Float64.([0, 0, 0.1, maximum(calibration), minimum(calibration)])
 fit_d = surface_fit(gaussian_model, x, y, calibration[:, :, 1], p0)
 fit_c = surface_fit(gaussian_model, x, y, calibration[:, :, 2], p0)
 
-conf_int = confidence_interval(fit_d, 0.05)
-error = map(x -> (x[2] - x[1]) / 2, conf_int)
-
 orders = 1:5
 pars = Matrix{Float64}(undef, 3, length(dims))
 pars_std = Matrix{Float64}(undef, 3, length(dims))
+##
+converted = 2
+
+if converted == 1
+    fit = fit_d
+else
+    fit = fit_c
+end
+
+name = converted == 1 ? "direct" : "converted"
+
+conf_int = confidence_interval(fit, 0.05)
+error = map(x -> (x[2] - x[1]) / 2, conf_int)
 
 for (n, order) ∈ enumerate(orders)
     x = h5open("Data/Raw/fixed_order_intense.h5") do f
-        imresize(f["images_order$order"][:, :, 1, :], 64, 64)
+        imresize(f["images_order$order"][:, :, converted, :], 64, 64)
     end |> gpu_device()
     normalize_data!(x, (1, 2))
     x = reshape(x, 64, 64, 1, 100)
@@ -173,69 +216,7 @@ for (n, order) ∈ enumerate(orders)
     pars[:, n] = mean(pred_pars, dims=2) |> cpu_device()
     pars_std[:, n] = std(pred_pars, dims=2) |> cpu_device()
 end
-relative_waist_error = @. abs.(pars[3, :] / fit.param[3] - 1) * 100
-relative_waist_error_std = @. pars_std[3, :] / fit.param[3] * 100
-x_difference = abs.(pars[1, :] .- fit.param[1])
-y_difference = abs.(pars[2, :] .- fit.param[2])
-x_difference_std = pars_std[1, :]
-y_difference_std = pars_std[2, :]
 
-with_theme(theme_latexfonts()) do
-    fig = Figure(fontsize=20)
-
-    ax1 = CairoMakie.Axis(fig[1, 1],
-        xlabel="Dimension",
-        ylabel=L"|\delta w| \ \left( \times 10^{-2} \right)",
-        yticks=0:2:10,
-    )
-    ylims!(ax1, 0, 10)
-
-    scatter!(ax1, dims, relative_waist_error,
-        color=:green,
-        markersize=16,
-        marker=:ltriangle,)
-    errorbars!(ax1, dims, relative_waist_error, relative_waist_error_std,
-        color=:green,
-        whiskerwidth=10)
-
-    text!(L"w^{LS} = %$(round(fit.param[3], sigdigits=4)) \pm %$(round(error[1], digits=4))",
-        position=(0.06, 0.82), fontsize=20, space=:relative)
-
-    hidexdecorations!(ax1, grid=false)
-
-    ax2 = CairoMakie.Axis(fig[2, 1],
-        xlabel="Dimension",
-        ylabel=L"|\Delta \mathbf{r}_0| \ \left(\times 10^{-3}\right)",
-    )
-
-    scatter!(ax2, dims, x_difference * 10^3,
-        color=:red,
-        markersize=16,
-        label=L"\Delta x_0^{NN}")
-    errorbars!(ax2, dims, x_difference * 10^3, x_difference_std * 10^3,
-        color=:red,
-        whiskerwidth=10)
-
-    scatter!(ax2, dims, y_difference * 10^3,
-        color=:blue,
-        markersize=16,
-        label=L"\Delta y_0^{NN}",
-        marker=:diamond)
-    errorbars!(ax2, dims, y_difference * 10^3, y_difference_std * 10^3,
-        color=:blue,
-        whiskerwidth=10)
-
-    text!(L"x_0^{LS} = (%$(round(10^3 * fit.param[1], digits=2)) \pm %$(round(10^3 * error[1], sigdigits=1))) \times 10^{-3}",
-        position=(0.2, 0.8), fontsize=20, space=:relative)
-    text!(L"y_0^{LS} = (%$(round(10^3 * fit.param[2], digits=2)) \pm %$(round(10^3 * error[2], sigdigits=1))) \times 10^{-3}",
-        position=(0.2, 0.65), fontsize=20, space=:relative)
-
-
-    axislegend(ax2, position=:lt, fontsize=24)
-
-    rowgap!(fig.layout, 5)
-
-    #save("Plots/positive_l_param.pdf", fig)
-
-    fig
-end
+make_plot(; waist_multiplier=10^2, position_multiplier=10^2, saving_path="",
+    horizontal_values=orders, horizontal_label="Order",
+    get_formated_data(pars, pars_std, fit)...)

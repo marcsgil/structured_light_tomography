@@ -9,6 +9,8 @@ end
 
 normalize_data!(x, (1, 2))
 
+model = get_model()
+
 ps, st = train(x, y, 200, model; device,
     model_saving_path="Tomography/TrainingLogs/best_model.jld2",
     logging_path="Tomography/TrainingLogs/log.csv", patience=30);

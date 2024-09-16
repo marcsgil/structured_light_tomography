@@ -191,7 +191,7 @@ orders = 1:5
 pars = Matrix{Float64}(undef, 3, length(dims))
 pars_std = Matrix{Float64}(undef, 3, length(dims))
 ##
-converted = 2
+converted = 1
 
 if converted == 1
     fit = fit_d

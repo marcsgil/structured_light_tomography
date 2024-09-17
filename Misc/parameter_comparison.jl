@@ -151,8 +151,11 @@ for (n, dim) ∈ enumerate(dims)
     pars_std[:, n] = std(pred_pars, dims=2) |> cpu_device()
 end
 
+fit.param[3]
 
-make_plot(; waist_multiplier=10^2, position_multiplier=10^2, saving_path="",
+
+make_plot(; waist_multiplier=10^2, position_multiplier=10^2,
+    saving_path="Plots/positive_l_param.pdf",
     horizontal_values=dims, horizontal_label="Dimension",
     get_formated_data(pars, pars_std, fit)...)
 ##
@@ -191,7 +194,7 @@ orders = 1:5
 pars = Matrix{Float64}(undef, 3, length(dims))
 pars_std = Matrix{Float64}(undef, 3, length(dims))
 ##
-converted = 1
+converted = 2
 
 if converted == 1
     fit = fit_d
@@ -217,6 +220,7 @@ for (n, order) ∈ enumerate(orders)
     pars_std[:, n] = std(pred_pars, dims=2) |> cpu_device()
 end
 
-make_plot(; waist_multiplier=10^2, position_multiplier=10^2, saving_path="",
+make_plot(; waist_multiplier=10^2, position_multiplier=10^2,
+    saving_path="Plots/fixed_order_intense_$name.pdf",
     horizontal_values=orders, horizontal_label="Order",
     get_formated_data(pars, pars_std, fit)...)

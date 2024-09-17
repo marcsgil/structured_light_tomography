@@ -29,13 +29,13 @@ ax.title = "Mode: $_mode; Mean: $μ"
 fig
 ##
 rs = LinRange(-0.5f0, 0.5f0, 64)
-x = Array{Float32}(undef, length(rs), length(rs), 1, 4 * 10^5)
+x = Array{Float32}(undef, length(rs), length(rs), 1, 10^6)
 y = vcat(rand(d_center, 2, size(x, 4)), Float32.(rand(d_waist, 1, size(x, 4))))
 
 p = Progress(size(x, 4))
 
 Threads.@threads for n ∈ axes(x, 4)
-    order = n ÷ (size(x, 4) ÷ 10) + 1
+    order = n ÷ (size(x, 4) ÷ 8) + 1
     basis_func = fixed_order_basis(order, view(y, :, n))
     buffer = [f(rs[1], rs[1]) for f in basis_func]
 

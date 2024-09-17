@@ -8,9 +8,10 @@ x, y = h5open("Data/Training/center_and_waist.h5") do file
 end
 
 normalize_data!(x, (1, 2))
+print("Dataset size: $(size(x,4)) \n")
 
 model = get_model()
 
-ps, st = train(x, y, 200, model; device,
+ps, st = train(x, y, 100, model; device,
     model_saving_path="Tomography/TrainingLogs/best_model.jld2",
-    logging_path="Tomography/TrainingLogs/log.csv", patience=50, opt=Lion());
+    logging_path="Tomography/TrainingLogs/log.csv", patience=20);

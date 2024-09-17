@@ -14,8 +14,8 @@ function scatter_and_errorbars!(ax, x, y, error, multiplier=1;
     color,
     marker,
 )
-    errorbars!(ax, x, y * multiplier, error * multiplier; color, whiskerwidth=12, linewidth=2)
-    scatter!(ax, x, y * multiplier; color, marker, markersize=20)
+    errorbars!(ax, x, y * multiplier, error * multiplier; color, whiskerwidth=16, linewidth=4)
+    scatter!(ax, x, y * multiplier; color, marker, markersize=24)
 end
 
 get_magnitude(x) = round(Int, log10(x))
@@ -24,7 +24,7 @@ function make_plot(; waist_multiplier, waist, waist_std, waist_fit,
     position_multiplier, x, x_std, x_fit, y, y_std, y_fit, saving_path="",
     horizontal_values, horizontal_label)
     with_theme(theme_latexfonts()) do
-        fig = Figure(fontsize=20)
+        fig = Figure(fontsize=24)
 
         mag = get_magnitude(waist_multiplier)
         ax1 = CairoMakie.Axis(fig[1, 1],
@@ -221,6 +221,6 @@ for (n, order) ∈ enumerate(orders)
 end
 
 make_plot(; waist_multiplier=10^2, position_multiplier=10^2,
-    saving_path="Plots/fixed_order_intense_$name.pdf",
+    saving_path="Plots/fixed_order_intense_$(name)_param.pdf",
     horizontal_values=orders, horizontal_label="Order",
     get_formated_data(pars, pars_std, fit)...)

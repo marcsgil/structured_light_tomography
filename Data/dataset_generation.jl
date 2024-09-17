@@ -11,10 +11,10 @@ end
 
 #Photocounting
 function sample_photons!(images, N_photons; dims=3)
-    N = sum(images, dims=Tuple(i for i in 1:ndims(arr) if i ∉ dims))
+    N = sum(images, dims=Tuple(i for i in 1:ndims(images) if i ∉ dims))
     images ./= N
 
-    Threads.@threads for image in eachslice(images; dims)
+    for image in eachslice(images; dims)
         simulate_outcomes!(image, N_photons)
     end
 end

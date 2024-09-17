@@ -70,7 +70,7 @@ end
 vec(mean(metrics, dims=2))
 ##
 h5open("Results/Intense/fixed_order.h5", "cw") do file
-    file["mean_fid"] = mean(metrics, dims=1)
-    file["std_fid"] = std(metrics, dims=1)
+    file["mean_fid"] = mean(metrics, dims=2)
+    file["std_fid"] = std(metrics, dims=2)
     file["orders"] = collect(orders)
 end

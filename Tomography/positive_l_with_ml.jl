@@ -1,10 +1,10 @@
 using BayesianTomography, HDF5, ProgressMeter, LinearAlgebra, LuxUtils, LuxCUDA, Images
 includet("../Utils/basis.jl")
 includet("../Utils/position_operators.jl")
-includet("ml_utils.jl")
+includet("../Utils/ml_utils.jl")
 ##
 
-relu(x::T1, y::T2) where {T1,T2} = max(zero(promote_type(T1, T2)), x - y)
+relu(x::T1, y::T2) where {T1,T2} = x > y ? x - y : zero(promote_type(T1, T2))
 function load_data(path, key, bg)
     images, ρs = h5open(path) do file
         obj = file[key]
@@ -20,27 +20,27 @@ path = "Data/Raw/positive_l.h5"
 
 bg = 0x02
 ##
-
+model = get_model()
 ps, st = jldopen("Tomography/TrainingLogs/best_model.jld2") do file
     file["parameters"], file["states"]
-end |> device
-
+end |> gpu_device()
 ##
 dims = 2:6
+rs = LinRange(-0.5f0, 0.5f0, 200)
 
 metrics = Matrix{Float64}(undef, 100, length(dims))
 
 @showprogress for (n, dim) ∈ enumerate(dims)
     images, ρs = load_data(path, "images_dim$dim", bg)
 
-    images_ml = reshape(imresize(images, 64, 64), 64, 64, 1, 100) |> cu
+    images_ml = reshape(imresize(images, 64, 64), 64, 64, 1, 100) |> gpu_device()
     normalize_data!(images_ml, (1, 2))
 
     param = model(images_ml, ps, st)[1] |> cpu_device()
 
     Threads.@threads for m ∈ axes(images, 3)
         basis = positive_l_basis(dim, view(param, :, m))
-        povm = assemble_position_operators(x, y, basis)
+        povm = assemble_position_operators(rs, rs, basis)
         problem = StateTomographyProblem(povm)
         mthd = LinearInversion(problem)
 

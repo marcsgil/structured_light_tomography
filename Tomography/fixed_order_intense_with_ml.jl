@@ -3,9 +3,9 @@ using HDF5, BayesianTomography, ProgressMeter, Images, LuxUtils, LuxCUDA
 includet("../Utils/model_fitting.jl")
 includet("../Utils/basis.jl")
 includet("../Utils/position_operators.jl")
-includet("ml_utils.jl")
+includet("../Utils/ml_utils.jl")
 
-relu(x::T1, y::T2) where {T1,T2} = max(zero(promote_type(T1, T2)), x - y)
+relu(x::T1, y::T2) where {T1,T2} = x > y ? x - y : zero(promote_type(T1, T2))
 
 function load_data(path, order, bgs)
     images, ρs = h5open(path) do file
@@ -73,7 +73,7 @@ finish!(p)
 vec(mean(metrics, dims=2))
 ##
 h5open("Results/Intense/fixed_order_with_ml.h5", "cw") do file
-    file["mean_fid"] = mean(metrics, dims=1)
-    file["std_fid"] = std(metrics, dims=1)
+    file["mean_fid"] = mean(metrics, dims=2)
+    file["std_fid"] = std(metrics, dims=2)
     file["orders"] = collect(orders)
 end

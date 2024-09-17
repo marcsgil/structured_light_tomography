@@ -56,7 +56,7 @@ end
 mean(metrics, dims=1)
 ##
 h5open("Results/Intense/positive_l.h5", "cw") do file
+    file["dims"] = collect(dims)
     file["mean_fid"] = mean(metrics, dims=1)
     file["std_fid"] = std(metrics, dims=1)
-    file["dims"] = collect(dims)
 end

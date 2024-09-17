@@ -5,9 +5,9 @@ manifest_format = "2.0"
 project_hash = "d5067a10cebde9f6430a72e09fe6bc4b47d5bb31"
 
 [[deps.ADTypes]]
-git-tree-sha1 = "99a6f5d0ce1c7c6afdb759daa30226f71c54f6b0"
+git-tree-sha1 = "5f205b5893c5bad5467365ec097249e9c26c2ca6"
 uuid = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
-version = "1.7.1"
+version = "1.8.0"
 weakdeps = ["ChainRulesCore", "EnzymeCore"]
 
     [deps.ADTypes.extensions]
@@ -66,9 +66,9 @@ weakdeps = ["StaticArrays"]
     AdaptStaticArraysExt = "StaticArrays"
 
 [[deps.AdaptivePredicates]]
-git-tree-sha1 = "7d5da5dd472490d048b081ca1bda4a7821b06456"
+git-tree-sha1 = "7e651ea8d262d2d74ce75fdf47c4d63c07dba7a6"
 uuid = "35492f91-a3bd-45ad-95db-fcad7dcfedb7"
-version = "1.1.1"
+version = "1.2.0"
 
 [[deps.AliasTables]]
 deps = ["PtrArrays", "Random"]
@@ -485,9 +485,9 @@ version = "0.1.2"
 
 [[deps.DelaunayTriangulation]]
 deps = ["AdaptivePredicates", "EnumX", "ExactPredicates", "Random"]
-git-tree-sha1 = "88c5695a8d7b23270afe1b6bef8232ac1f201862"
+git-tree-sha1 = "94eb20e6621600f4315813b1d1fc9b8a5a6a34db"
 uuid = "927a84f5-c5f4-47a5-9785-b46e178433df"
-version = "1.3.1"
+version = "1.4.0"
 
 [[deps.DelimitedFiles]]
 deps = ["Mmap"]
@@ -1130,9 +1130,9 @@ version = "0.2.4"
 
 [[deps.KernelAbstractions]]
 deps = ["Adapt", "Atomix", "InteractiveUtils", "MacroTools", "PrecompileTools", "Requires", "StaticArrays", "UUIDs", "UnsafeAtomics", "UnsafeAtomicsLLVM"]
-git-tree-sha1 = "cb1cff88ef2f3a157cbad75bbe6b229e1975e498"
+git-tree-sha1 = "045d41a364a81e357757c566b5a69fd4a2a2c445"
 uuid = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
-version = "0.9.25"
+version = "0.9.26"
 weakdeps = ["EnzymeCore", "LinearAlgebra", "SparseArrays"]
 
     [deps.KernelAbstractions.extensions]
@@ -1409,9 +1409,9 @@ version = "1.0.0"
 
 [[deps.LuxLib]]
 deps = ["ArrayInterface", "ChainRulesCore", "Compat", "CpuId", "DispatchDoctor", "EnzymeCore", "FastClosures", "ForwardDiff", "Hwloc", "KernelAbstractions", "LinearAlgebra", "LoopVectorization", "LuxCore", "MLDataDevices", "Markdown", "NNlib", "Octavian", "Polyester", "Random", "Reexport", "SLEEFPirates", "Static", "StaticArraysCore", "Statistics"]
-git-tree-sha1 = "e97256691f67fb04db48e78b86a010622504b513"
+git-tree-sha1 = "77b5fac2e6f851ff506e6ca75cc7ca203c0a2e61"
 uuid = "82251201-b29d-42c6-8e01-566dec8acb11"
-version = "1.2.1"
+version = "1.2.3"
 
     [deps.LuxLib.extensions]
     LuxLibAppleAccelerateExt = "AppleAccelerate"
@@ -1435,7 +1435,7 @@ version = "1.2.1"
 
 [[deps.LuxUtils]]
 deps = ["JLD2", "Lux", "MLUtils", "Optimisers", "ProgressMeter", "Random", "Reexport", "Zygote"]
-git-tree-sha1 = "b707feeb264b57a602705ce39e5d7c3346b41aed"
+git-tree-sha1 = "3eec084047313eb5090e2d89663bdcfbda3a5134"
 repo-rev = "main"
 repo-url = "https://github.com/marcsgil/LuxUtils.jl.git"
 uuid = "055c4679-0785-4377-afd4-4bfcfc51ff01"

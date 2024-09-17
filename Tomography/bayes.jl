@@ -1,4 +1,4 @@
-using BayesianTomography, HDF5, ProgressMeter, FiniteDiff
+using BayesianTomography, HDF5, ProgressMeter
 
 includet("../Data/data_treatment_utils.jl")
 includet("../Utils/position_operators.jl")

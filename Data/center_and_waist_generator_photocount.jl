@@ -29,7 +29,7 @@ ax.title = "Mode: $_mode; Mean: $μ"
 fig
 ##
 rs = LinRange(-0.5f0, 0.5f0, 64)
-x = Array{Float32}(undef, length(rs), length(rs), 1, 10^2)
+x = Array{Float32}(undef, length(rs), length(rs), 1, 10^6)
 y = vcat(rand(d_center, 2, size(x, 4)), Float32.(rand(d_waist, 1, size(x, 4))))
 
 p = Progress(size(x, 4))
@@ -52,13 +52,16 @@ GC.gc()
 add_noise!(x, dims=(3, 4))
 ##
 
-for slice ∈ eachslice(x, dims=(3, 4))
+p = Progress(size(x, 4))
+Threads.@threads for slice ∈ eachslice(x, dims=(3, 4))
     normalize!(slice, 1)
     simulate_outcomes!(slice, rand(64:1024))
+    next!(p)
 end
+finish!(p)
 
 
-visualize(x[:, :, 1, ])
+visualize(x[:, :, 1, 10*10^5])
 
 
 ##

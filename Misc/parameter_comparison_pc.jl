@@ -18,7 +18,7 @@ y = LinRange(-0.5f0, 0.5f0, size(calibration, 2))
 
 fit_d, fit_c = calibration_fit(x, y, calibration)
 
-fit_c.param
+fit_d.param
 ##
 orders = 1:4
 
@@ -28,7 +28,7 @@ pars_std = Matrix{Float64}(undef, 3, length(orders))
 
 for (n, order) ∈ enumerate(orders)
     x = h5open(path) do f
-            f["images_order$order"][:, :, 2:2, :]
+            f["images_order$order"][:, :, 1:1, :]
         end .|> Float32 |> gpu_device()
     normalize_data!(x, (1, 2))
 

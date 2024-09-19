@@ -80,7 +80,7 @@ function make_plot(; waist_multiplier, waist, waist_std, waist_fit,
                 L"y_0^{LS}",
             ])
 
-        rowgap!(fig.layout, 5)
+        rowgap!(fig.layout, 16)
 
         if !isempty(saving_path)
             save(saving_path, fig)
@@ -194,7 +194,7 @@ orders = 1:5
 pars = Matrix{Float64}(undef, 3, length(dims))
 pars_std = Matrix{Float64}(undef, 3, length(dims))
 ##
-converted = 1
+converted = 2
 
 if converted == 1
     fit = fit_d
@@ -221,6 +221,6 @@ for (n, order) ∈ enumerate(orders)
 end
 
 make_plot(; waist_multiplier=10^2, position_multiplier=10^2,
-    saving_path="",
+    saving_path="Plots/fixed_order_intense_$(name)_param.pdf",
     horizontal_values=orders, horizontal_label="Order",
     get_formated_data(pars, pars_std, fit)...)

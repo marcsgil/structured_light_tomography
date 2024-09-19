@@ -16,8 +16,11 @@ function gaussian_model(x, y, p)
     offset + amplitude * abs2(hg(x - x₀, y - y₀; w))
 end
 
-function blade_model(x, y, p)
-    _p = @view p[begin:end-1]
-    blade_pos = p[end]
-    gaussian_model(x, y, _p) * (x < blade_pos)
+function calibration_fit(x, y, calibration::AbstractMatrix)
+    p0 = [0, 0, 0.15f0, maximum(calibration), minimum(calibration)]
+    surface_fit(gaussian_model, x, y, calibration, p0)
+end
+
+function calibration_fit(x, y, calibration)
+    (calibration_fit(x, y, slice) for slice ∈ eachslice(calibration, dims=3))
 end

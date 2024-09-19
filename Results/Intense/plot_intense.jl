@@ -17,7 +17,7 @@ function make_plot(mean_fid, std_fid, mean_fid_ml, std_fid_ml, h_values, h_label
         ax = CairoMakie.Axis(fig[1, 1], 
         xlabel=h_label, 
         ylabel="Mean Fidelity",
-        yticks = 0.95:0.01:1)
+        yticks = 0.92:0.01:1)
 
         scatter!(ax, h_values, mean_fid,
             color=:blue,

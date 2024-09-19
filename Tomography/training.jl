@@ -3,7 +3,7 @@ includet("../Utils/ml_utils.jl")
 
 device = gpu_device()
 
-x, y = h5open("Data/Training/center_and_waist_pc.h5") do file
+x, y = h5open("Data/Training/center_and_waist.h5") do file
     read(file["x"]), read(file["y"])
 end
 
@@ -14,4 +14,4 @@ model = get_model()
 
 ps, st = train(x, y, 100, model; device,
     model_saving_path="Tomography/TrainingLogs/best_model_pc.jld2",
-    logging_path="Tomography/TrainingLogs/log_pc.csv", patience=20);
+    logging_path="Tomography/TrainingLogs/log_pc.csv", patience=20, opt=Adam(5e-4));

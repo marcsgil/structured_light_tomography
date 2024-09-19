@@ -1,77 +1,53 @@
 using BayesianTomography, HDF5, ProgressMeter
 
-includet("../Utils/model_fitting.jl")
-includet("../Utils/basis.jl")
 includet("../Utils/position_operators.jl")
+includet("../Utils/basis.jl")
+includet("../Utils/model_fitting.jl")
 includet("../Utils/photocount_utils.jl")
+
+path = "Data/Raw/fixed_order_photocount.h5"
 ##
-calibration = h5open("Data/Raw/fixed_order_photocount.h5") do file
-    read(file["calibration"])
+calibration = h5open(path) do file
+    file["calibration"] |> read
 end
 
 x = LinRange(-0.5f0, 0.5f0, size(calibration, 1))
 y = LinRange(-0.5f0, 0.5f0, size(calibration, 2))
 
-p0 = Float64.([0, 0, 0.1, maximum(calibration), minimum(calibration)])
-
-fit_d = surface_fit(gaussian_model, x, y, calibration[:, :, 1], p0)
-fit_c = surface_fit(gaussian_model, x, y, calibration[:, :, 2], p0)
-##
-order = 1
-images, coefficients = h5open("Data/Raw/fixed_order_photocount.h5") do file
-    read(file["images_order$order"]), read(file["labels_order$order"])
-end
-
-direct_operators = assemble_position_operators(x, y, fixed_order_basis(order, fit_d.param))
-converted_basis = [(x, y) -> f(x, y) * cis((k - 1) * π / 2)
-                   for (k, f) ∈ enumerate(fixed_order_basis(order, fit_c.param))]
-converted_operators = assemble_position_operators(x, y, converted_basis)
-operators = stack((direct_operators, converted_operators))
-
-problem = StateTomographyProblem(operators)
-mthd = MaximumLikelihood(problem)
-##
-m = 14
-n = 2
-outcomes = sample_events(view(images, :, :, :, m), photocounts[n])
-
-sum(Int, outcomes)
-
-ρ_pred, _ = prediction(outcomes, mthd, max_iter=10^2)
-ψ = project2pure(ρ_pred)
-fidelity(ψ, view(coefficients, :, m))
+fit_d, fit_c = calibration_fit(x, y, calibration)
 ##
 orders = 1:4
 photocounts = [2^k for k ∈ 6:11]
 fids = zeros(Float64, length(photocounts), 50, length(orders))
 
-progress = Progress(length(fids))
-
+p = Progress(length(fids))
 for (k, order) ∈ enumerate(orders)
-    images, coefficients = h5open("Data/Raw/fixed_order_photocount.h5") do file
-        read(file["images_order$order"]), read(file["labels_order$order"])
+    coefficients = h5open(path) do file
+        file["labels_order$order"] |> read
     end
 
-    direct_operators = assemble_position_operators(x, y, fixed_order_basis(order, fit_d.param))
-    converted_basis = [(x, y) -> f(x, y) * cis((k - 1) * π / 2)
-                       for (k, f) ∈ enumerate(fixed_order_basis(order, fit_c.param))]
-    converted_operators = assemble_position_operators(x, y, converted_basis)
-    operators = stack((direct_operators, converted_operators))
+    basis_d = fixed_order_basis(order, fit_d.param)
+    basis_c = [(x, y) -> f(x, y) * cis((k - 1) * Float32(π) / 2)
+               for (k, f) ∈ enumerate(fixed_order_basis(order, fit_c.param))]
 
-    problem = StateTomographyProblem(operators)
-    mthd = BayesianInference(problem)
+    direct_povm = assemble_position_operators(x, y, basis_d)
+    converted_povm = assemble_position_operators(x, y, basis_c)
+    povm = stack((direct_povm, converted_povm))
+    problem = StateTomographyProblem(povm)
+    mthd = MaximumLikelihood(problem)
 
+    Threads.@threads for n ∈ eachindex(photocounts)
+        outcomes = h5open(path) do file
+            file["images_order$order"] |> read
+        end
 
-    Threads.@threads for m ∈ 1:50
-        for n ∈ eachindex(photocounts)
-            outcomes = sample_events(view(images, :, :, :, m), photocounts[n])
-            ρ_pred, _ = prediction(outcomes, mthd)
-            ψ = project2pure(ρ_pred)
+        for m ∈ 1:50
+            undersampled_image = sample_events(view(outcomes, :, :, :, m), photocounts[n])
+            ψ = project2pure(prediction(undersampled_image, mthd)[1])
             fids[n, m, k] = fidelity(ψ, view(coefficients, :, m))
-            next!(progress)
+            next!(p)
         end
     end
 end
-finish!(progress)
 
-dropdims(mean(fids, dims=2), dims=2)
+fids = dropdims(mean(fids, dims=2), dims=2)

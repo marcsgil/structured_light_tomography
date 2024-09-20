@@ -5,17 +5,17 @@ includet("../Utils/position_operators.jl")
 includet("../Utils/obstructions.jl")
 includet("../Utils/model_fitting.jl")
 ##
-relu(x, y) = x > y ? x - y : zero(x)
-
-function load_data(path, key)
-    h5open(path) do file
+function load_data(path, key, bg)
+    images, ρs, par = h5open(path) do file
         obj = file[key]
         read(obj), attrs(obj)["density_matrices"], attrs(obj)["par"]
     end
+
+    remove_background!(images, bg)
+    images, ρs, par
 end
 
-path = "Data/Raw/iris_new.h5"
-saving_path = "Results/Intense/iris.h5"
+path = "Data/iris.h5"
 
 calibration = h5open(path) do file
     file["calibration"] |> read
@@ -24,22 +24,23 @@ end
 x = LinRange(-0.5, 0.5, size(calibration, 1))
 y = LinRange(-0.5, 0.5, size(calibration, 2))
 
-p0 = Float64.([0, 0, 0.1, 1, maximum(calibration), minimum(calibration)])
-fit = surface_fit(gaussian_model, x, y, calibration, p0)
+fit = calibration_fit(x, y, calibration)
 
 fit.param
+bg = round(UInt8, fit.param[5])
 basis = positive_l_basis(2, fit.param)
+##
+
+
+
 ##
 N = 3
 
-metrics = Matrix{Float64}(undef, 100, N)
-errors = Matrix{Float64}(undef, 100, N)
-
-metric = zeros(Float64, N)
+fids = Matrix{Float64}(undef, 100, N)
 pars = Vector{Float64}(undef, N)
 
-for n ∈ 1:N
-    images, ρs, par = load_data(path, "images_$n")
+for n ∈ 1:3
+    images, ρs, par = load_data(path, "images_$n", bg)
     pars[n] = par[2]
 
     Is = get_valid_indices(x, y, iris_obstruction, fit.param[1], fit.param[2], par[1])
@@ -47,31 +48,24 @@ for n ∈ 1:N
     problem = StateTomographyProblem(povm)
     mthd = LinearInversion(problem)
 
-    map!(x -> relu(x, round(UInt8, fit.param[6])), images, images)
-
-    θs = Array{Float32}(undef, 3, 2, size(images)[end])
-    covs = Array{Float32}(undef, 3, 3, size(images)[end])
-
     for m ∈ axes(images, 3)
         probs = images[:, :, m][Is]
         ρ = ρs[:, :, m]
-        θ = gell_mann_projection(ρ)
-        pred_ρ, pred_θ, cov = prediction(probs, mthd)
+        pred_ρ = prediction(probs, mthd)[1]
 
-        θs[:, 1, m] = θ
-        θs[:, 2, m] = pred_θ
-        covs[:, :, m] .= cov
+        fids[m, n] = fidelity(ρ, pred_ρ)
 
-        metric[n] += fidelity(ρ, pred_ρ) / size(images, 3)
+        if m==5 && n ==3
+            display(ρ)
+            display(pred_ρ)
+        end
     end
-
-    """h5open(saving_path, "cw") do file
-        file["thetas_$n"] = θs
-        file["covs_$n"] = covs
-    end"""
 end
 
-metric
+mean(fids, dims=1)
+##
+std(fids, dims=1)
+pars
 ##
 h5open(saving_path, "cw") do file
     file["radius"] = pars

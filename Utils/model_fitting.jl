@@ -1,4 +1,4 @@
-using StructuredLight, LsqFit
+using StructuredLight, LsqFit, StatsBase
 
 function surface_fit(model, x, y, data, p0)
     function _model(xy, p)
@@ -49,4 +49,15 @@ end
 function center_of_mass_and_waist(img, order)
     m₀, n₀, s² = center_of_mass_and_variance(img)
     m₀, n₀, √(2 * s² / (order + 1))
+end
+
+most_frequent_value(data) = countmap(data) |> argmax
+
+function remove_background!(images, bg)
+    map!(x -> x < bg ? zero(x) : x - bg, images, images)
+end
+
+function remove_background!(images)
+    bg = most_frequent_value(images)
+    remove_background!(images, bg)
 end

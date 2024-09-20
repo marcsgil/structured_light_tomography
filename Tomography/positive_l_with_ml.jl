@@ -20,32 +20,34 @@ path = "Data/Raw/positive_l.h5"
 
 bg = 0x02
 ##
-model = get_model()
+"""model = get_model()
 ps, st = jldopen("Tomography/TrainingLogs/best_model.jld2") do file
     file["parameters"], file["states"]
-end |> gpu_device()
+end |> gpu_device()"""
 ##
 dims = 2:6
-rs = LinRange(-0.5f0, 0.5f0, 200)
+#rs = LinRange(-0.5f0, 0.5f0, 200)
+xs = Base.OneTo(200)
+ys = Base.OneTo(200)
 
 metrics = Matrix{Float64}(undef, 100, length(dims))
 
 @showprogress for (n, dim) ∈ enumerate(dims)
     images, ρs = load_data(path, "images_dim$dim", bg)
 
-    images_ml = reshape(imresize(images, 64, 64), 64, 64, 1, 100) |> gpu_device()
-    normalize_data!(images_ml, (1, 2))
+    #images_ml = reshape(imresize(images, 64, 64), 64, 64, 1, 100) |> gpu_device()
+    #normalize_data!(images_ml, (1, 2))
 
-    param = model(images_ml, ps, st)[1] |> cpu_device()
+    #param = model(images_ml, ps, st)[1] |> cpu_device()
 
     Threads.@threads for m ∈ axes(images, 3)
-        basis = positive_l_basis(dim, view(param, :, m))
-        povm = assemble_position_operators(rs, rs, basis)
+        probs = view(images, :, :, m)
+
+        basis = positive_l_basis(dim, center_of_mass_and_waist(probs, 2 * (dim - 1)))
+        povm = assemble_position_operators(xs, ys, basis)
         problem = StateTomographyProblem(povm)
         mthd = LinearInversion(problem)
 
-
-        probs = images[:, :, m]
         ρ = ρs[:, :, m]
         pred_ρ, _ = prediction(probs, mthd)
 

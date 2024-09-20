@@ -24,3 +24,29 @@ end
 function calibration_fit(x, y, calibration)
     (calibration_fit(x, y, slice) for slice ∈ eachslice(calibration, dims=3))
 end
+
+function center_of_mass(img::AbstractMatrix{T}) where {T}
+    m₀ = zero(T)
+    n₀ = zero(T)
+    for n ∈ axes(img, 2), m ∈ axes(img, 1)
+        m₀ += m * img[m, n]
+        n₀ += n * img[m, n]
+    end
+    m₀ / sum(img), n₀ / sum(img)
+end
+
+function center_of_mass_and_variance(img::AbstractMatrix{T}) where {T}
+    m₀, n₀ = center_of_mass(img)
+
+    r2 = zero(T)
+    for n ∈ axes(img, 2), m ∈ axes(img, 1)
+        r2 += ((m - m₀)^2 + (n - n₀)^2) * img[m, n]
+    end
+
+    m₀, n₀, r2 / sum(img)
+end
+
+function center_of_mass_and_waist(img, order)
+    m₀, n₀, s² = center_of_mass_and_variance(img)
+    m₀, n₀, √(2 * s² / (order + 1))
+end

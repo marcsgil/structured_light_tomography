@@ -13,11 +13,16 @@ end
 
 function gaussian_model(x, y, p)
     x₀, y₀, w, amplitude, offset = p
-    offset + amplitude * abs2(hg(x - x₀, y - y₀; w))
+    offset + amplitude * exp(-2 * ((x - x₀)^2 + (y - y₀)^2) / w^2)
 end
 
 function calibration_fit(x, y, calibration::AbstractMatrix)
-    p0 = [0, 0, 0.15f0, maximum(calibration), minimum(calibration)]
+    Δx = x[end] - x[begin]
+    Δy = y[end] - y[begin]
+    w = max(Δx / 4, Δy / 4)
+    x₀ = x[length(x)÷2]
+    y₀ = y[length(y)÷2]
+    p0 = [x₀, y₀, w, maximum(calibration), minimum(calibration)]
     surface_fit(gaussian_model, x, y, calibration, p0)
 end
 

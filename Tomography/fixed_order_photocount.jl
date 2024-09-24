@@ -4,21 +4,24 @@ includet("../Utils/position_operators.jl")
 includet("../Utils/basis.jl")
 includet("../Utils/model_fitting.jl")
 includet("../Utils/photocount_utils.jl")
+includet("../Utils/bootstraping.jl")
 
-path = "Data/Raw/fixed_order_photocount.h5"
+path = "Data/fixed_order_photocount.h5"
 ##
 calibration = h5open(path) do file
     file["calibration"] |> read
 end
 
-x = LinRange(-0.5f0, 0.5f0, size(calibration, 1))
-y = LinRange(-0.5f0, 0.5f0, size(calibration, 2))
-
+x = axes(calibration, 1)
+y = axes(calibration, 2)
+##
 fit_d, fit_c = calibration_fit(x, y, calibration)
+
+fit_c.param
 ##
 orders = 1:4
 photocounts = [2^k for k ∈ 6:11]
-fids = zeros(Float64, length(photocounts), 50, length(orders))
+fids = Array{Float32}(undef, length(photocounts), 50, length(orders))
 
 p = Progress(length(fids))
 for (k, order) ∈ enumerate(orders)
@@ -27,8 +30,7 @@ for (k, order) ∈ enumerate(orders)
     end
 
     basis_d = fixed_order_basis(order, fit_d.param)
-    basis_c = [(x, y) -> f(x, y) * cis((k - 1) * Float32(π) / 2)
-               for (k, f) ∈ enumerate(fixed_order_basis(order, fit_c.param))]
+    basis_c = fixed_order_basis(order, fit_c.param, Float32(π) / 2)
 
     direct_povm = assemble_position_operators(x, y, basis_d)
     converted_povm = assemble_position_operators(x, y, basis_c)
@@ -50,4 +52,48 @@ for (k, order) ∈ enumerate(orders)
     end
 end
 
-fids = dropdims(mean(fids, dims=2), dims=2)
+dropdims(mean(fids, dims=2), dims=2)
+##
+fids_no_calib = zeros(Float64, length(photocounts), 50, length(orders))
+p = Progress(length(fids_no_calib))
+for (k, order) ∈ enumerate(orders)
+    coefficients = h5open(path) do file
+        file["labels_order$order"] |> read
+    end
+
+    Threads.@threads for n ∈ eachindex(photocounts)
+        outcomes = h5open(path) do file
+            file["images_order$order"] |> read
+        end
+
+        for m ∈ 1:50
+            undersampled_image = sample_events(view(outcomes, :, :, :, m), photocounts[n])
+
+            param_d = center_of_mass_and_waist(view(undersampled_image, :, :, 1), order)
+            param_c = center_of_mass_and_waist(view(undersampled_image, :, :, 2), order)
+
+            basis_d = fixed_order_basis(order, param_d)
+            basis_c = fixed_order_basis(order, param_c, Float32(π) / 2)
+
+            direct_povm = assemble_position_operators(x, y, basis_d)
+            converted_povm = assemble_position_operators(x, y, basis_c)
+            povm = stack((direct_povm, converted_povm))
+            problem = StateTomographyProblem(povm)
+            mthd = MaximumLikelihood(problem)
+
+            ψ = project2pure(prediction(undersampled_image, mthd)[1])
+            fids_no_calib[n, m, k] = fidelity(ψ, view(coefficients, :, m))
+            next!(p)
+        end
+    end
+end
+
+dropdims(mean(fids_no_calib, dims=2), dims=2)
+
+##
+h5open("Results/fixed_order_photocount.h5", "cw") do file
+    file["fid"] = stack(bootstrap(slice) for slice ∈ eachslice(fids, dims=(1, 3)))
+    file["fid_no_calib"] = stack(bootstrap(slice) for slice ∈ eachslice(fids_no_calib, dims=(1, 3)))
+    file["orders"] = collect(orders)
+    file["photocounts"] = collect(photocounts)
+end

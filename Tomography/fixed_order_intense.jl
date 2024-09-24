@@ -3,6 +3,7 @@ using HDF5, BayesianTomography, ProgressMeter
 includet("../Utils/model_fitting.jl")
 includet("../Utils/basis.jl")
 includet("../Utils/position_operators.jl")
+includet("../Utils/bootstraping.jl")
 
 function load_data(path, order, bgs)
     images, ρs = h5open(path) do file
@@ -36,7 +37,7 @@ fit_c.param
 ##
 orders = 1:5
 
-metrics = Matrix{Float32}(undef, length(orders), 100)
+fid = Matrix{Float32}(undef, length(orders), 100)
 
 @showprogress for (m, order) ∈ enumerate(orders)
     images, ρs = load_data(path, order, (fit_d.param[5], fit_c.param[5]))
@@ -57,16 +58,16 @@ metrics = Matrix{Float32}(undef, length(orders), 100)
         ρ = @view ρs[:, :, n]
         pred_ρ, _ = prediction(probs, mthd)
 
-        metrics[m, n] = fidelity(ρ, pred_ρ)
+        fid[m, n] = fidelity(ρ, pred_ρ)
     end
 end
 
-vec(mean(metrics, dims=2))
+vec(mean(fid, dims=2))
 ##
 orders = 1:5
-metrics_no_calib = Matrix{Float64}(undef, length(orders), 100)
+fid_no_calib = Matrix{Float64}(undef, length(orders), 100)
 
-p = Progress(prod(size(metrics_no_calib)))
+p = Progress(prod(size(fid_no_calib)))
 Threads.@threads for m ∈ eachindex(orders)
     order = orders[m]
     images, ρs = load_data(path, order, (0x02, 0x02))
@@ -89,20 +90,16 @@ Threads.@threads for m ∈ eachindex(orders)
         mthd = LinearInversion(problem)
 
         pred_ρ = prediction(slice, mthd)[1]
-        metrics_no_calib[m, n] = fidelity(ρ, pred_ρ)
+        fid_no_calib[m, n] = fidelity(ρ, pred_ρ)
         next!(p)
     end
 end
 finish!(p)
 
-vec(mean(metrics_no_calib, dims=2))
-
-sort(metrics_no_calib, dims=2)[2,:]
+vec(mean(fid_no_calib, dims=2))
 ##
 h5open("Results/fixed_order_intense.h5", "cw") do file
-    file["mean_fid"] = vec(mean(metrics, dims=2))
-    file["std_fid"] = vec(std(metrics, dims=2))
-    file["mean_fid_no_calib"] = vec(mean(metrics_no_calib, dims=2))
-    file["std_fid_no_calib"] = vec(std(metrics_no_calib, dims=2))
+    file["fid"] = stack(bootstrap(slice) for slice ∈ eachslice(fid, dims=1))
+    file["fid_no_calib"] = stack(bootstrap(slice) for slice ∈ eachslice(fid_no_calib, dims=1))
     file["orders"] = collect(orders)
 end

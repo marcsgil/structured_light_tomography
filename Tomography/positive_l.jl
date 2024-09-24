@@ -2,6 +2,7 @@ using BayesianTomography, HDF5, ProgressMeter
 includet("../Utils/basis.jl")
 includet("../Utils/position_operators.jl")
 includet("../Utils/model_fitting.jl")
+includet("../Utils/bootstraping.jl")
 ##
 function load_data(path, key, bg)
     images, ρs = h5open(path) do file
@@ -31,7 +32,7 @@ fit.param
 ##
 dims = 2:6
 
-metrics = Matrix{Float64}(undef, 100, length(dims))
+fid = Matrix{Float64}(undef, 100, length(dims))
 
 @showprogress for (n, dim) ∈ enumerate(dims)
     images, ρs = load_data(path, "images_dim$dim", bg)
@@ -46,17 +47,17 @@ metrics = Matrix{Float64}(undef, 100, length(dims))
         ρ = @view ρs[:, :, m]
         pred_ρ = prediction(probs, mthd)[1]
 
-        metrics[m, n] = fidelity(ρ, pred_ρ)
+        fid[m, n] = fidelity(ρ, pred_ρ)
     end
 end
 
-mean(metrics, dims=1)
+mean(fid, dims=1)
 ##
 dims = 2:6
 
-metrics_no_calib = Matrix{Float64}(undef, 100, length(dims))
+fid_no_calib = Matrix{Float64}(undef, 100, length(dims))
 
-p = Progress(prod(size(metrics_no_calib)))
+p = Progress(prod(size(fid_no_calib)))
 Threads.@threads for n ∈ eachindex(dims)
     dim = dims[n]
     images, ρs = load_data(path, "images_dim$dim", 0x02)
@@ -73,18 +74,16 @@ Threads.@threads for n ∈ eachindex(dims)
 
         pred_ρ = prediction(probs, mthd)[1]
 
-        metrics_no_calib[m, n] = fidelity(ρ, pred_ρ)
+        fid_no_calib[m, n] = fidelity(ρ, pred_ρ)
         next!(p)
     end
 end
 finish!(p)
 
-mean(metrics_no_calib, dims=1)
+mean(fid_no_calib, dims=1)
 ##
 h5open("Results/positive_l.h5", "cw") do file
     file["dims"] = collect(dims)
-    file["mean_fid"] = vec(mean(metrics, dims=1))
-    file["std_fid"] = vec(std(metrics, dims=1))
-    file["mean_fid_no_calib"] = vec(mean(metrics_no_calib, dims=1))
-    file["std_fid_no_calib"] = vec(std(metrics_no_calib, dims=1))
+    file["fid"] = stack(bootstrap(slice) for slice ∈ eachslice(fid, dims=2))
+    file["fid_no_calib"] = stack(bootstrap(slice) for slice ∈ eachslice(fid_no_calib, dims=2))
 end

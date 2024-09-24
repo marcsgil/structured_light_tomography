@@ -4,6 +4,7 @@ includet("../Utils/basis.jl")
 includet("../Utils/position_operators.jl")
 includet("../Utils/obstructions.jl")
 includet("../Utils/model_fitting.jl")
+includet("../Utils/bootstraping.jl")
 ##
 function load_data(path, key, bg)
     images, ρs, par = h5open(path) do file
@@ -32,7 +33,7 @@ basis = positive_l_basis(2, fit.param)
 ##
 N = 3
 
-fids = Matrix{Float64}(undef, 100, N)
+fid = Matrix{Float64}(undef, 100, N)
 pars = Vector{Float64}(undef, N)
 
 for n ∈ 1:3
@@ -51,16 +52,16 @@ for n ∈ 1:3
         ρ = ρs[:, :, m]
         pred_ρ = prediction(probs, mthd)[1]
 
-        fids[m, n] = fidelity(ρ, pred_ρ)
+        fid[m, n] = fidelity(ρ, pred_ρ)
     end
 end
 
-mean(fids, dims=1)
+mean(fid, dims=1)
 ##
-pars
+statistics = stack(bootstrap(slice) for slice ∈ eachslice(fid, dims=2))
+(statistics[3, :] - statistics[2, :]) / 2
 ##
 h5open("Results/iris.h5", "cw") do file
-    file["mean_fid"] = vec(mean(fids, dims=1))
-    file["std_fid"] = vec(std(fids, dims=1))
+    file["fid"] = stack(bootstrap(slice) for slice ∈ eachslice(fid, dims=2))
     file["radius"] = pars
 end

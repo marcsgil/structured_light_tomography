@@ -58,6 +58,8 @@ end
 
 mean(fid, dims=1)
 ##
+pars
+##
 statistics = stack(bootstrap(slice) for slice ∈ eachslice(fid, dims=2))
 (statistics[3, :] - statistics[2, :]) / 2
 ##

@@ -40,15 +40,26 @@ function center_of_mass(img::AbstractMatrix{T}) where {T}
     m₀ / sum(img), n₀ / sum(img)
 end
 
-function center_of_mass_and_variance(img::AbstractMatrix{T}) where {T}
-    m₀, n₀ = center_of_mass(img)
+function center_of_mass_and_variance(img)
+    T = float(typeof(firstindex(img)))
 
-    r2 = zero(T)
+    m₀ = zero(T)
+    n₀ = zero(T)
+    s² = zero(T)
+    N = zero(T)
+
     for n ∈ axes(img, 2), m ∈ axes(img, 1)
-        r2 += ((m - m₀)^2 + (n - n₀)^2) * img[m, n]
+        m₀ += m * img[m, n]
+        n₀ += n * img[m, n]
+        s² += (m^2 + n^2) * img[m, n]
+        N += img[m, n]
     end
 
-    m₀, n₀, r2 / sum(img)
+    m₀ /= sum(img)
+    n₀ /= sum(img)
+    s² = s² / N - m₀^2 - n₀^2
+
+    m₀, n₀, s²
 end
 
 function center_of_mass_and_waist(img, order)

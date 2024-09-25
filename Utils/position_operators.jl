@@ -17,6 +17,15 @@ function assemble_position_operators(xs, ys, basis)
     end
 
     return operators
+
+
+    """basis_fields = stack(basis(xs, ys) for basis ∈ basis)
+    broadcast!(conj, basis_fields, basis_fields)
+    Δx = xs[2] - xs[1]
+    Δy = ys[2] - ys[1]
+    ΔA = Δx * Δy
+
+    [v * v' * ΔA for v ∈ eachslice(basis_fields, dims=(1, 2))]"""
 end
 
 function get_intensity!(img, buffer, ρ, basis_func, x, y)

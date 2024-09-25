@@ -28,25 +28,25 @@ calibration = h5open(path) do file
     read(file["calibration"])
 end
 
-x = axes(calibration, 1)
-y = axes(calibration, 2)
+x = Float32.(axes(calibration, 1))
+y = Float32.(axes(calibration, 2))
 
 fit_d, fit_c = calibration_fit(x, y, calibration)
 
-fit_c.param
+fit_d.param
 ##
 order = 1
 
 images, ρs = load_data(path, order, (fit_d.param[5], fit_c.param[5]))
 
-@benchmark fixed_order_basis($order, $fit_d.param)
 
 basis_d = fixed_order_basis(order, fit_d.param)
 basis_c = fixed_order_basis(order, fit_c.param, -Float32(π) / 6)
 
-@benchmark assemble_position_operators($x, $y, $basis_d)
+assemble_position_operators(x, y, basis_d)
 
-direct_povm = assemble_position_operators(x, y, basis_d)
+sum(direct_povm)
+
 converted_povm = assemble_position_operators(x, y, basis_c)
 povm = stack((direct_povm, converted_povm))
 

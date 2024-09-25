@@ -11,7 +11,7 @@ function fixed_order_basis(order, pars, phase=0.0f0)
     x₀ = pars[1]
     y₀ = pars[2]
     w = pars[3]
-    [(x, y) -> cis(n * phase) * hg(x .- x₀, y - y₀; w, m=order - n, n) for n ∈ 0:order]
+    [(x, y) -> cis(n * phase) * hg(x .- x₀, y .- y₀; w, m=order - n, n) for n ∈ 0:order]
 end
 
 function only_l_basis(dim, pars)

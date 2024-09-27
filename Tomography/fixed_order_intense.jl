@@ -28,8 +28,8 @@ calibration = h5open(path) do file
     read(file["calibration"])
 end
 
-x = axes(calibration, 1)
-y = axes(calibration, 2)
+x = Float32.(axes(calibration, 1))
+y = Float32.(axes(calibration, 2))
 
 fit_d, fit_c = calibration_fit(x, y, calibration)
 
@@ -45,18 +45,14 @@ fid = Matrix{Float32}(undef, length(orders), 100)
     basis_d = fixed_order_basis(order, fit_d.param)
     basis_c = fixed_order_basis(order, fit_c.param, -Float32(π) / 6)
 
-    direct_povm = assemble_position_operators(x, y, basis_d)
-    converted_povm = assemble_position_operators(x, y, basis_c)
-    povm = stack((direct_povm, converted_povm))
+    measurement = Measurement(assemble_position_operators(x, y, basis_d, basis_c))
 
-    problem = StateTomographyProblem(povm)
-
-    mthd = LinearInversion(problem)
+    mthd = PreAllocatedLinearInversion(measurement)
 
     Threads.@threads for n ∈ axes(images, 4)
         probs = @view images[:, :, :, n]
         ρ = @view ρs[:, :, n]
-        pred_ρ, _ = prediction(probs, mthd)
+        pred_ρ, _ = prediction(probs, measurement, mthd)
 
         fid[m, n] = fidelity(ρ, pred_ρ)
     end
@@ -66,6 +62,7 @@ vec(mean(fid, dims=2))
 ##
 orders = 1:5
 fid_no_calib = Matrix{Float64}(undef, length(orders), 100)
+mthd = LinearInversion()
 
 p = Progress(prod(size(fid_no_calib)))
 Threads.@threads for m ∈ eachindex(orders)
@@ -84,12 +81,9 @@ Threads.@threads for m ∈ eachindex(orders)
 
         direct_povm = assemble_position_operators(x, y, basis_d)
         converted_povm = assemble_position_operators(x, y, basis_c)
-        povm = stack((direct_povm, converted_povm))
+        measurement = Measurement(stack((direct_povm, converted_povm)))
 
-        problem = StateTomographyProblem(povm)
-        mthd = LinearInversion(problem)
-
-        pred_ρ = prediction(slice, mthd)[1]
+        pred_ρ = prediction(slice, measurement, mthd)[1]
         fid_no_calib[m, n] = fidelity(ρ, pred_ρ)
         next!(p)
     end

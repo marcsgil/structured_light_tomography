@@ -3,7 +3,6 @@ using HDF5, BayesianTomography, ProgressMeter
 includet("../Utils/model_fitting.jl")
 includet("../Utils/basis.jl")
 includet("../Utils/position_operators.jl")
-includet("../Utils/bootstraping.jl")
 
 function load_data(path, order, bgs)
     images, ρs = h5open(path) do file
@@ -35,42 +34,45 @@ fit_d, fit_c = calibration_fit(x, y, calibration)
 
 fit_d.param
 ##
-order = 1
+order = 5
 
 images, ρs = load_data(path, order, (fit_d.param[5], fit_c.param[5]))
 
 
+images
+
 basis_d = fixed_order_basis(order, fit_d.param)
 basis_c = fixed_order_basis(order, fit_c.param, -Float32(π) / 6)
+assemble_position_operators(x, y, basis_d, basis_c)
 
+Measurement(assemble_position_operators(x, y, basis_d, basis_c))
+##
 
-assemble_position_operators(x, y, basis_d)
+@benchmark Measurement(assemble_position_operators($x, $y, $basis_d, $basis_c))
 
-sum(direct_povm)
+@benchmark assemble_position_operators($x, $y, 6, $basis_d, $basis_c)
+##
+ψ = BayesianTomography.sample(HaarVector(6))
+θ = Vector{Float32}(undef, 6^2 - 1)
+ρ = ψ * ψ'
 
-converted_povm = assemble_position_operators(x, y, basis_c)
-povm = stack((direct_povm, converted_povm))
+@benchmark gell_mann_projection!($θ, $ψ)
+@benchmark gell_mann_projection!($θ, $ρ)
+##
 
-@benchmark StateTomographyProblem($povm)
+mthd = PreAllocatedLinearInversion(m)
 
-problem = StateTomographyProblem(povm)
+@benchmark PreAllocatedLinearInversion($m)
 
-mthd = LinearInversion(problem)
+img = calibration[:, :, 1]
+@benchmark center_of_mass_and_waist($img, 0)
 
-function get_real_representation(measurement)
-    T = real(eltype(eltype(measurement)))
-    dim = size(first(measurement), 1)
-    traceless_part = Matrix{T}(undef, length(measurement), dim^2 - 1)
-    trace_part = Vector{T}(undef, length(measurement))
+@code_warntype prediction(calibration, m, mthd)
 
-    Threads.@threads for n ∈ eachindex(measurement)
-        trace_part[n] = real(tr(measurement[n])) / dim
-        gell_mann_projection!(view(traceless_part, n, :), measurement[n])
-    end
+@benchmark prediction($calibration, $m, $mthd)
+##
+A = rand(Float32, 400^2, 35)
+q = rand(Float32, 400^2)
+A \ q
 
-    traceless_part, trace_part
-end
-
-get_real_representation(povm)
-
-@benchmark get_real_representation($povm)
+@benchmark $A \ $q

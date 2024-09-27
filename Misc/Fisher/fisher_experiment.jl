@@ -5,9 +5,9 @@ includet("../../Utils/position_operators.jl")
 
 function average_cov_bound(θs, rs, measurement, obstruction_func, args...; kwargs...)
     I = get_valid_indices(rs, rs, obstruction_func, args...; kwargs...)
-    problem = StateTomographyProblem(measurement[I])
+    obstructed_measurement = Measurement(measurement[I])
 
-    mean(sum(inv, eigvals(fisher(problem, θ))) for θ ∈ eachslice(θs, dims=2))
+    mean(sum(inv, eigvals(fisher(obstructed_measurement, θ))) for θ ∈ eachslice(θs, dims=2))
 end
 ##
 rs = LinRange(-2.2f0, 2.2f0, 256)

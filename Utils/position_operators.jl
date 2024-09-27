@@ -1,31 +1,22 @@
 using Tullio, LinearAlgebra
 
-function assemble_position_operators(xs, ys, basis)
-    T = complex(float(eltype(xs)))
-    Π = Matrix{T}(undef, length(basis), length(basis))
-    operators = Matrix{Matrix{T}}(undef, length(xs), length(ys))
-
+function assemble_position_operators(xs, ys, basis...)
     Δx = xs[2] - xs[1]
     Δy = ys[2] - ys[1]
-    ΔA = Δx * Δy
+    normalization = sqrt(Δx * Δy / length(basis))
 
-    for (n, y) ∈ enumerate(ys), (m, x) ∈ enumerate(xs)
-        for (k, ψ) ∈ enumerate(basis), (j, ϕ) ∈ enumerate(basis)
-            Π[j, k] = conj(ϕ(x, y)) * ψ(x, y) * ΔA
+    basis_fields = stack(stack(f(xs, ys, normalization) for f ∈ base) for base ∈ basis)
+    return eachslice(basis_fields, dims=(1, 2, 4))
+
+    """operators = Array{ComplexF32}(undef, length(first(basis)), length(basis), length(xs), length(ys))
+
+    for (k, base) ∈ enumerate(basis)
+        for (j, f) ∈ enumerate(base)
+            operators[j, k, :, :] .= f(xs, ys, normalization)
         end
-        operators[m, n] = copy(Π)
     end
 
-    return operators
-
-
-    """basis_fields = stack(basis(xs, ys) for basis ∈ basis)
-    broadcast!(conj, basis_fields, basis_fields)
-    Δx = xs[2] - xs[1]
-    Δy = ys[2] - ys[1]
-    ΔA = Δx * Δy
-
-    [v * v' * ΔA for v ∈ eachslice(basis_fields, dims=(1, 2))]"""
+    eachslice(operators, dims=(2, 3, 4))"""
 end
 
 function get_intensity!(img, buffer, ρ, basis_func, x, y)

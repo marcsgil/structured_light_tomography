@@ -5,7 +5,7 @@ includet("../../Utils/position_operators.jl")
 
 function average_cov_bound(θs, rs, measurement, obstruction_func, args...; kwargs...)
     I = get_valid_indices(rs, rs, obstruction_func, args...; kwargs...)
-    obstructed_measurement = Measurement(measurement[I])
+    obstructed_measurement = ProportionalMeasurement(measurement[I])
 
     mean(sum(inv, eigvals(fisher(obstructed_measurement, θ))) for θ ∈ eachslice(θs, dims=2))
 end

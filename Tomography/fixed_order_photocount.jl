@@ -22,6 +22,7 @@ fit_c.param
 orders = 1:4
 photocounts = [2^k for k ∈ 6:11]
 fids = Array{Float32}(undef, length(photocounts), 50, length(orders))
+mthd = MaximumLikelihood()
 
 p = Progress(length(fids))
 for (k, order) ∈ enumerate(orders)
@@ -32,11 +33,8 @@ for (k, order) ∈ enumerate(orders)
     basis_d = fixed_order_basis(order, fit_d.param)
     basis_c = fixed_order_basis(order, fit_c.param, Float32(π) / 2)
 
-    direct_povm = assemble_position_operators(x, y, basis_d)
-    converted_povm = assemble_position_operators(x, y, basis_c)
-    povm = stack((direct_povm, converted_povm))
-    problem = StateTomographyProblem(povm)
-    mthd = MaximumLikelihood(problem)
+    measurement = Measurement(assemble_position_operators(x, y, basis_d, basis_c))
+
 
     Threads.@threads for n ∈ eachindex(photocounts)
         outcomes = h5open(path) do file
@@ -45,7 +43,7 @@ for (k, order) ∈ enumerate(orders)
 
         for m ∈ 1:50
             undersampled_image = sample_events(view(outcomes, :, :, :, m), photocounts[n])
-            ψ = project2pure(prediction(undersampled_image, mthd)[1])
+            ψ = project2pure(prediction(undersampled_image, measurement, mthd)[1])
             fids[n, m, k] = fidelity(ψ, view(coefficients, :, m))
             next!(p)
         end
@@ -55,6 +53,8 @@ end
 dropdims(mean(fids, dims=2), dims=2)
 ##
 fids_no_calib = zeros(Float64, length(photocounts), 50, length(orders))
+mthd = MaximumLikelihood()
+
 p = Progress(length(fids_no_calib))
 for (k, order) ∈ enumerate(orders)
     coefficients = h5open(path) do file
@@ -75,13 +75,9 @@ for (k, order) ∈ enumerate(orders)
             basis_d = fixed_order_basis(order, param_d)
             basis_c = fixed_order_basis(order, param_c, Float32(π) / 2)
 
-            direct_povm = assemble_position_operators(x, y, basis_d)
-            converted_povm = assemble_position_operators(x, y, basis_c)
-            povm = stack((direct_povm, converted_povm))
-            problem = StateTomographyProblem(povm)
-            mthd = MaximumLikelihood(problem)
+            measurement = Measurement(assemble_position_operators(x, y, basis_d, basis_c))
 
-            ψ = project2pure(prediction(undersampled_image, mthd)[1])
+            ψ = project2pure(prediction(undersampled_image, measurement, mthd)[1])
             fids_no_calib[n, m, k] = fidelity(ψ, view(coefficients, :, m))
             next!(p)
         end

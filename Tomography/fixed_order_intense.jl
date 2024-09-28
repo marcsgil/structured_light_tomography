@@ -76,12 +76,10 @@ Threads.@threads for m ∈ eachindex(orders)
         param_d = center_of_mass_and_waist(view(slice, :, :, 1), order)
         param_c = center_of_mass_and_waist(view(slice, :, :, 2), order)
 
-        basis_d = fixed_order_basis(order, param_d)
-        basis_c = fixed_order_basis(order, param_c, -Float32(π) / 6)
+        basis_d = fixed_order_basis(order, fit_d.param)
+        basis_c = fixed_order_basis(order, fit_c.param, -Float32(π) / 6)
 
-        direct_povm = assemble_position_operators(x, y, basis_d)
-        converted_povm = assemble_position_operators(x, y, basis_c)
-        measurement = Measurement(stack((direct_povm, converted_povm)))
+        measurement = Measurement(assemble_position_operators(x, y, basis_d, basis_c))
 
         pred_ρ = prediction(slice, measurement, mthd)[1]
         fid_no_calib[m, n] = fidelity(ρ, pred_ρ)

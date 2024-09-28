@@ -30,8 +30,10 @@ fit = calibration_fit(x, y, calibration)
 fit.param
 bg = round(UInt8, fit.param[5])
 basis = positive_l_basis(2, fit.param)
+operators = assemble_position_operators(x, y, basis)
 ##
 N = 3
+
 
 fid = Matrix{Float64}(undef, 100, N)
 pars = Vector{Float64}(undef, N)
@@ -43,14 +45,13 @@ for n ∈ 1:3
     radius = (x[end] - x[begin]) * par[1]
 
     Is = get_valid_indices(x, y, iris_obstruction, fit.param[1], fit.param[2], radius)
-    povm = assemble_position_operators(x, y, basis)[Is]
-    problem = StateTomographyProblem(povm)
-    mthd = LinearInversion(problem)
+    measurement = ProportionalMeasurement(operators[Is])
+    mthd = PreAllocatedLinearInversion(measurement)
 
-    for m ∈ axes(images, 3)
+    Threads.@threads for m ∈ axes(images, 3)
         probs = images[:, :, m][Is]
         ρ = ρs[:, :, m]
-        pred_ρ = prediction(probs, mthd)[1]
+        pred_ρ = prediction(probs, measurement, mthd)[1]
 
         fid[m, n] = fidelity(ρ, pred_ρ)
     end

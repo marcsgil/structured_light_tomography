@@ -38,14 +38,14 @@ fid = Matrix{Float64}(undef, 100, length(dims))
     images, ρs = load_data(path, "images_dim$dim", bg)
 
     basis = positive_l_basis(dim, fit.param)
-    povm = assemble_position_operators(x, y, basis)
-    problem = StateTomographyProblem(povm)
-    mthd = LinearInversion(problem)
+    measurement = Measurement(assemble_position_operators(x, y, basis))
+
+    mthd = PreAllocatedLinearInversion(measurement)
 
     Threads.@threads for m ∈ axes(images, 3)
         probs = @view images[:, :, m]
         ρ = @view ρs[:, :, m]
-        pred_ρ = prediction(probs, mthd)[1]
+        pred_ρ = prediction(probs, measurement, mthd)[1]
 
         fid[m, n] = fidelity(ρ, pred_ρ)
     end
@@ -56,6 +56,7 @@ mean(fid, dims=1)
 dims = 2:6
 
 fid_no_calib = Matrix{Float64}(undef, 100, length(dims))
+mthd = LinearInversion()
 
 p = Progress(prod(size(fid_no_calib)))
 Threads.@threads for n ∈ eachindex(dims)
@@ -68,11 +69,9 @@ Threads.@threads for n ∈ eachindex(dims)
 
         param = center_of_mass_and_waist(probs, 2 * (dim - 1))
         basis = positive_l_basis(dim, param)
-        povm = assemble_position_operators(x, y, basis)
-        problem = StateTomographyProblem(povm)
-        mthd = LinearInversion(problem)
+        measurement = Measurement(assemble_position_operators(x, y, basis))
 
-        pred_ρ = prediction(probs, mthd)[1]
+        pred_ρ = prediction(probs, measurement, mthd)[1]
 
         fid_no_calib[m, n] = fidelity(ρ, pred_ρ)
         next!(p)

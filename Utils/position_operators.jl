@@ -5,18 +5,16 @@ function assemble_position_operators(xs, ys, basis...)
     Δy = ys[2] - ys[1]
     normalization = sqrt(Δx * Δy / length(basis))
 
-    basis_fields = stack(stack(f(xs, ys, normalization) for f ∈ base) for base ∈ basis)
-    return eachslice(basis_fields, dims=(1, 2, 4))
-
-    """operators = Array{ComplexF32}(undef, length(first(basis)), length(basis), length(xs), length(ys))
+    operators = Array{ComplexF32}(undef, length(first(basis)), length(xs), length(ys), length(basis))
 
     for (k, base) ∈ enumerate(basis)
         for (j, f) ∈ enumerate(base)
-            operators[j, k, :, :] .= f(xs, ys, normalization)
+            operators[j, :, :, k] = f(xs, ys, normalization)
         end
     end
 
-    eachslice(operators, dims=(2, 3, 4))"""
+    operators
+    eachslice(operators, dims=(2, 3, 4))
 end
 
 function get_intensity!(img, buffer, ρ, basis_func, x, y)

@@ -17,15 +17,37 @@ function get_colormap(data)
         return colormap[1:n]
     end
 end
+
+function get_data(x, y, θx, θz, operators, basis_func, obstruction_func, args...; kwargs...)
+    @assert length(θx) == length(θz)
+
+    I = get_valid_indices(x, y, obstruction_func, args...; kwargs...)
+    measurement = ProportionalMeasurement(operators[I])
+
+    bound_values = Vector{Float32}(undef, length(θx))
+    p = Progress(length(bound_values))
+    Threads.@threads for n ∈ eachindex(bound_values)
+        @inbounds θ = [θx[n], 0, θz[n]]
+        bound_values[n] = sum(inv, eigvals(fisher(measurement, θ)))
+        next!(p)
+    end
+
+    modes = [[abs2(f(x, y)) for x ∈ x, y ∈ y] for f in get_obstructed_basis(basis_func, obstruction_func, args...; kwargs...)]
+    for mode ∈ modes
+        normalize!(mode, Inf)
+    end
+    modes = vcat(modes[1], modes[2])
+    bound_values, modes
+end
 ##
 rs = LinRange(-2.2f0, 2.2f0, 256)
-basis_func = positive_l_basis(2, [0.0f0, 0, 1, 1])
+basis_func = positive_l_basis(2, (0.0f0, 0, 1))
 
-povm = assemble_position_operators(rs, rs, basis_func)
+operators = assemble_position_operators(rs, rs, basis_func)
 
-prob = StateTomographyProblem(povm)
+measurement = Measurement(operators)
 ##
-coords = LinRange(-1.0f0, 1, 128)
+coords = LinRange(-1.0f0, 1, 512)
 inv_sqrt_2 = Float32(1 / √2)
 θs = [[x * inv_sqrt_2, 0, z * inv_sqrt_2] for x in coords, z ∈ coords]
 
@@ -40,7 +62,7 @@ p = Progress(length(Is))
 Threads.@threads for n ∈ eachindex(Is)
     I = Is[n]
     θ = θs[I[1], I[2]]
-    fisher_values[n] = sum(inv, eigvals(fisher(prob, θ)))
+    fisher_values[n] = sum(inv, eigvals(fisher(measurement, θ)))
     next!(p)
 end
 
@@ -65,15 +87,14 @@ with_theme(theme_latexfonts()) do
         xlabelsize=32,
         ylabelsize=32,
         xgridvisible=false,
-        ygridvisible=false,
-        title="Unobstructed")
+        ygridvisible=false,)
     xlims!(ax, (-1, 1))
     ylims!(ax, (-1, 1))
 
 
     lim = maximum(abs, fisher_values)
     hm = heatmap!(ax, x_coords, y_coords, fisher_values)
-    Colorbar(ga[1, 2], hm, label=L"\text{Tr } I_0^{-1}")
+    Colorbar(ga[1, 2], hm, label=L"\text{Tr } I^{-1}")
 
     ax2 = Axis(gb[1, 1], aspect=DataAspect())
     hidedecorations!(ax2)
@@ -82,37 +103,21 @@ with_theme(theme_latexfonts()) do
 
     rowsize!(g, 2, Auto(0.5))
 
-    #save("Plots/fisher_sphere.png", fig, px_per_unit=4)
+    save("Plots/fisher_sphere.png", fig, px_per_unit=4)
     fig
 end
 ##
-radius = 1.07f0
 
 
 
-I = get_valid_indices(rs, rs, iris_obstruction, 0, 0, radius)
+radius = 1.0f0
 
-povm = assemble_position_operators(rs, rs, basis_func)[I]
 
-sum(povm)
 
-prob = StateTomographyProblem(povm)
 
-fisher_values_obs = Vector{Float32}(undef, length(Is))
 
-p = Progress(length(Is))
-Threads.@threads for n ∈ eachindex(Is)
-    I = Is[n]
-    θ = θs[I[1], I[2]]
-    fisher_values_obs[n] = sum(inv, eigvals(fisher(prob, θ)))
-    next!(p)
-end
 
-modes = [[abs2(f(x, y)) for x ∈ rs, y ∈ rs] for f in get_obstructed_basis(basis_func, iris_obstruction, 0, 0, radius)]
-for mode ∈ modes
-    normalize!(mode, Inf)
-end
-modes = vcat(modes[1], modes[2])
+
 
 with_theme(theme_latexfonts()) do
     fig = Figure(size=(600, 700), fontsize=24)

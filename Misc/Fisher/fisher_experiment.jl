@@ -26,8 +26,8 @@ bounds = [average_cov_bound(θs, rs, measurement, iris_obstruction, 0, 0, radius
 with_theme(theme_latexfonts()) do
     fig = Figure(fontsize=24)
     ax = Axis(fig[1, 1],
-        xlabel="Radius",
-        ylabel="Average MSE bound",
+        xlabel=L"r \ (w )",
+        ylabel=L"B",
         yscale=log2,
         xticks=0.4:0.4:2,
         yticks=[2^k for k ∈ 2:1:12]
@@ -43,13 +43,13 @@ bounds = [average_cov_bound(θs, rs, measurement, blade_obstruction, xb) for xb 
 with_theme(theme_latexfonts()) do
     fig = Figure(fontsize=24)
     ax = Axis(fig[1, 1],
-        xlabel="Blade position",
-        ylabel="Average MSE bound",
+        xlabel=L"x_b \ (w)",
+        ylabel=L"B",
         yscale=log2,
         xticks=-1.5:0.5:2,
         yticks=[2^k for k ∈ 2:1:12]
     )
     lines!(ax, xb, bounds, linewidth=4)
-    #save("Plots/blade_bound.pdf", fig)
+    save("Plots/blade_bound.pdf", fig)
     fig
 end

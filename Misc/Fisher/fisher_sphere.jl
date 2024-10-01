@@ -40,17 +40,18 @@ function get_data(x, y, θx, θz, operators, basis_func, obstruction_func, args.
     bound_values, modes
 end
 
-function make_plot(data, θx, θz, colorbar_label, titles=["" for _ ∈ data]; saving_path="", reference=nothing)
+function make_plot(data, θx, θz, colorbar_label, titles=["" for _ ∈ data];
+    saving_path="", reference=nothing, fontsize=24, labelsize=32)
     with_theme(theme_latexfonts()) do
-        fig = Figure(size=(length(data) * 600, 700), fontsize=24)
+        fig = Figure(; size=(length(data) * 600, 600), fontsize)
 
         for (n, (bounds, modes)) ∈ enumerate(data)
             ax = Axis(fig[1, 2n-1],
                 aspect=DataAspect(),
                 xlabel=L"x",
                 ylabel=L"z",
-                xlabelsize=32,
-                ylabelsize=32,
+                xlabelsize=labelsize,
+                ylabelsize=labelsize,
                 xgridvisible=false,
                 ygridvisible=false,
                 title=titles[n])
@@ -100,20 +101,24 @@ Is = findall(θ -> sum(abs2, θ) ≤ 1 / 2, θs)
 
 unobstructed_bounds, unobstructed_modes = get_data(rs, rs, θx, θz, operators, basis_func, (x, y) -> true)
 ##
-make_plot([(unobstructed_bounds, unobstructed_modes)], θx, θz, L"\text{Tr } I^{-1}")
+make_plot([(unobstructed_bounds, unobstructed_modes)], θx, θz, L"B"; saving_path="Plots/fisher_sphere.png")
 ##
 radiuses = (1.0f0, 0.5f0, 0.25f0)
 iris_data = [get_data(rs, rs, θx, θz, operators, basis_func, iris_obstruction, 0, 0, r) for r ∈ radiuses]
-titles = ["Radius = $r w" for r ∈ radiuses]
+titles = [L"r = %$r w" for r ∈ radiuses]
 
-colorbar_label = L"\log_2 \left( \text{Tr } I^{-1} / \text{Tr } I_0^{-1} \right)"
+colorbar_label = L"\log_2 \left( B / B_0 \right)"
 
-make_plot(iris_data, θx, θz, colorbar_label, titles, reference=unobstructed_bounds)
+make_plot(iris_data, θx, θz, colorbar_label, titles;
+    reference=unobstructed_bounds, saving_path="Plots/fisher_sphere_iris.png",
+    fontsize=34, labelsize=36)
 ##
-xbs = (-0.5, -1, -1.5)
+xbs = (0.5, -0.5, -1)
 blade_data = [get_data(rs, rs, θx, θz, operators, basis_func, blade_obstruction, xb) for xb ∈ xbs]
-titles = ["Blade position = $xb w" for xb ∈ xbs]
+titles = [L"x_b = %$xb w" for xb ∈ xbs]
 
-colorbar_label = L"\log_2 \left( \text{Tr } I^{-1} / \text{Tr } I_0^{-1} \right)"
+colorbar_label = L"\log_2 \left( B / B_0 \right)"
 
-make_plot(blade_data, θx, θz, colorbar_label, titles, reference=unobstructed_bounds)
+make_plot(blade_data, θx, θz, colorbar_label, titles;
+    reference=unobstructed_bounds, saving_path="Plots/fisher_sphere_blade.png",
+    fontsize=34, labelsize=36)

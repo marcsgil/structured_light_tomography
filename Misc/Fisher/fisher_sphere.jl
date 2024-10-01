@@ -39,6 +39,48 @@ function get_data(x, y, θx, θz, operators, basis_func, obstruction_func, args.
     modes = vcat(modes[1], modes[2])
     bound_values, modes
 end
+
+function make_plot(data, θx, θz, colorbar_label, titles=["" for _ ∈ data]; saving_path="", reference=nothing)
+    with_theme(theme_latexfonts()) do
+        fig = Figure(size=(length(data) * 600, 700), fontsize=24)
+
+        for (n, (bounds, modes)) ∈ enumerate(data)
+            ax = Axis(fig[1, 2n-1],
+                aspect=DataAspect(),
+                xlabel=L"x",
+                ylabel=L"z",
+                xlabelsize=32,
+                ylabelsize=32,
+                xgridvisible=false,
+                ygridvisible=false,
+                title=titles[n])
+            xlims!(ax, (-1, 1))
+            ylims!(ax, (-1, 1))
+
+            if !isnothing(reference)
+                log_relative = @. log2(bounds / reference)
+                colormap = get_colormap(log_relative)
+                hm = heatmap!(ax, θx * √2, θz * √2, log_relative; colormap)
+            else
+                hm = heatmap!(ax, θx * √2, θz * √2, bounds)
+            end
+
+            Colorbar(fig[1, 2n], hm, label=colorbar_label)
+
+            ax2 = Axis(fig[2, 2n-1], aspect=DataAspect())
+            hidedecorations!(ax2)
+
+            hm2 = heatmap!(ax2, modes; colormap=:jet)
+            Colorbar(fig[2, 2n], hm2, label="Intensity")
+        end
+
+        rowsize!(fig.layout, 2, Auto(0.5))
+
+        isempty(saving_path) || save(saving_path, fig, px_per_unit=4)
+
+        fig
+    end
+end
 ##
 rs = LinRange(-2.2f0, 2.2f0, 256)
 basis_func = positive_l_basis(2, (0.0f0, 0, 1))
@@ -47,177 +89,31 @@ operators = assemble_position_operators(rs, rs, basis_func)
 
 measurement = Measurement(operators)
 ##
-coords = LinRange(-1.0f0, 1, 512)
-inv_sqrt_2 = Float32(1 / √2)
-θs = [[x * inv_sqrt_2, 0, z * inv_sqrt_2] for x in coords, z ∈ coords]
+coords = LinRange(-1 / Float32(√2), 1 / Float32(√2), 512)
+θs = [[x, 0, z] for x in coords, z ∈ coords]
 
 Is = findall(θ -> sum(abs2, θ) ≤ 1 / 2, θs)
 
-x_coords = [coords[I[1]] for I ∈ Is]
-y_coords = [coords[I[2]] for I ∈ Is]
+θx = [θs[I][1] for I ∈ Is]
+θz = [θs[I][3] for I ∈ Is]
 
-fisher_values = Vector{Float32}(undef, length(Is))
 
-p = Progress(length(Is))
-Threads.@threads for n ∈ eachindex(Is)
-    I = Is[n]
-    θ = θs[I[1], I[2]]
-    fisher_values[n] = sum(inv, eigvals(fisher(measurement, θ)))
-    next!(p)
-end
-
-modes = [[abs2(f(x, y)) for x ∈ rs, y ∈ rs] for f in basis_func]
-for mode ∈ modes
-    normalize!(mode, Inf)
-end
-modes = vcat(modes[1], modes[2])
+unobstructed_bounds, unobstructed_modes = get_data(rs, rs, θx, θz, operators, basis_func, (x, y) -> true)
 ##
-with_theme(theme_latexfonts()) do
-    fig = Figure(size=(600, 700), fontsize=24)
-
-    g = fig[1, 1] = GridLayout()
-
-    ga = g[1, 1] = GridLayout()
-    gb = g[2, 1] = GridLayout()
-
-    ax = Axis(ga[1, 1],
-        aspect=DataAspect(),
-        xlabel=L"x",
-        ylabel=L"z",
-        xlabelsize=32,
-        ylabelsize=32,
-        xgridvisible=false,
-        ygridvisible=false,)
-    xlims!(ax, (-1, 1))
-    ylims!(ax, (-1, 1))
-
-
-    lim = maximum(abs, fisher_values)
-    hm = heatmap!(ax, x_coords, y_coords, fisher_values)
-    Colorbar(ga[1, 2], hm, label=L"\text{Tr } I^{-1}")
-
-    ax2 = Axis(gb[1, 1], aspect=DataAspect())
-    hidedecorations!(ax2)
-    hm2 = heatmap!(ax2, modes; colormap=:jet, colorrange=(0, 1))
-    Colorbar(gb[1, 2], hm2, label="Intensity (a.u.)")
-
-    rowsize!(g, 2, Auto(0.5))
-
-    save("Plots/fisher_sphere.png", fig, px_per_unit=4)
-    fig
-end
+make_plot([(unobstructed_bounds, unobstructed_modes)], θx, θz, L"\text{Tr } I^{-1}")
 ##
+radiuses = (1.0f0, 0.5f0, 0.25f0)
+iris_data = [get_data(rs, rs, θx, θz, operators, basis_func, iris_obstruction, 0, 0, r) for r ∈ radiuses]
+titles = ["Radius = $r w" for r ∈ radiuses]
 
+colorbar_label = L"\log_2 \left( \text{Tr } I^{-1} / \text{Tr } I_0^{-1} \right)"
 
-
-radius = 1.0f0
-
-
-
-
-
-
-
-
-with_theme(theme_latexfonts()) do
-    fig = Figure(size=(600, 700), fontsize=24)
-
-    g = fig[1, 1] = GridLayout()
-
-    ga = g[1, 1] = GridLayout()
-    gb = g[2, 1] = GridLayout()
-
-    ax = Axis(ga[1, 1],
-        aspect=DataAspect(),
-        xlabel=L"x",
-        ylabel=L"z",
-        xlabelsize=32,
-        ylabelsize=32,
-        xgridvisible=false,
-        ygridvisible=false,
-        title="Radius = $radius w")
-    xlims!(ax, (-1, 1))
-    ylims!(ax, (-1, 1))
-
-
-    log_relative = log2.(fisher_values_obs ./ fisher_values)
-    colormap = get_colormap(log_relative)
-
-    lim = maximum(abs, log_relative)
-    hm = heatmap!(ga[1, 1], x_coords, y_coords, log_relative; colormap)
-    Colorbar(ga[1, 2], hm, label=L"\log_2 \left( \text{Tr } I^{-1} / \text{Tr } I_0^{-1} \right)")
-
-    ax2 = Axis(gb[1, 1], aspect=DataAspect())
-    hidedecorations!(ax2)
-    hm2 = heatmap!(ax2, modes; colormap=:jet)
-    Colorbar(gb[1, 2], hm2, label="Intensity")
-
-    rowsize!(g, 2, Auto(0.5))
-
-    #save("Plots/fisher_sphere_r=$r.png", fig, px_per_unit=4)
-
-    fig
-end
+make_plot(iris_data, θx, θz, colorbar_label, titles, reference=unobstructed_bounds)
 ##
-xb = 0.5f0
-I = get_valid_indices(rs, rs, blade_obstruction, xb)
+xbs = (-0.5, -1, -1.5)
+blade_data = [get_data(rs, rs, θx, θz, operators, basis_func, blade_obstruction, xb) for xb ∈ xbs]
+titles = ["Blade position = $xb w" for xb ∈ xbs]
 
-povm = assemble_position_operators(rs, rs, basis_func)[I]
-L = transform_incomplete_povm!(povm)
-prob = StateTomographyProblem(povm)
+colorbar_label = L"\log_2 \left( \text{Tr } I^{-1} / \text{Tr } I_0^{-1} \right)"
 
-fisher_values_obs = Vector{Float32}(undef, length(Is))
-
-p = Progress(length(Is))
-Threads.@threads for n ∈ eachindex(Is)
-    I = Is[n]
-    θ = θs[I[1], I[2]]
-    fisher_values_obs[n] = sum(inv, eigvals(incomplete_fisher(prob, θ, L)))
-    next!(p)
-end
-
-modes = [[abs2(f(x, y)) for x ∈ rs, y ∈ rs] for f in get_obstructed_basis(basis_func, blade_obstruction, xb)]
-for mode ∈ modes
-    normalize!(mode, Inf)
-end
-modes = vcat(modes[1], modes[2])
-
-with_theme(theme_latexfonts()) do
-    fig = Figure(size=(600, 700), fontsize=24)
-
-    g = fig[1, 1] = GridLayout()
-
-    ga = g[1, 1] = GridLayout()
-    gb = g[2, 1] = GridLayout()
-
-    ax = Axis(ga[1, 1],
-        aspect=DataAspect(),
-        xlabel=L"x",
-        ylabel=L"z",
-        xlabelsize=32,
-        ylabelsize=32,
-        xgridvisible=false,
-        ygridvisible=false,
-        title=L"x_b = %$xb w")
-    xlims!(ax, (-1, 1))
-    ylims!(ax, (-1, 1))
-
-
-    log_relative = log2.(fisher_values_obs ./ fisher_values)
-    colormap = get_colormap(log_relative)
-
-    lim = maximum(abs, log_relative)
-    hm = heatmap!(ga[1, 1], x_coords, y_coords, log_relative; colormap)
-    Colorbar(ga[1, 2], hm, label=L"\log_2 \left( \text{Tr } I^{-1} / \text{Tr } I_0^{-1} \right)")
-
-    ax2 = Axis(gb[1, 1], aspect=DataAspect())
-    hidedecorations!(ax2)
-    hm2 = heatmap!(ax2, modes; colormap=:jet)
-    Colorbar(gb[1, 2], hm2, label="Intensity")
-
-    rowsize!(g, 2, Auto(0.5))
-
-    #save("Plots/fisher_sphere_xb=$xb.png", fig, px_per_unit=4)
-
-    fig
-end
+make_plot(blade_data, θx, θz, colorbar_label, titles, reference=unobstructed_bounds)

@@ -1,29 +1,15 @@
-using BayesianTomography, PositionMeasurements, LinearAlgebra
+using BayesianTomography, LinearAlgebra
+
+includet("../Utils/basis.jl")
+include("../Utils/position_operators.jl")
+
+rs = Float32.(1:400)
 
 for order ∈ 1:5
-    basis = transverse_basis(order)
-    R = 2.5 * 0.5 * order
-    rs = LinRange(-R, R, 64)
+    basis_d = fixed_order_basis(order, (200, 200, 100))
+    basis_c = fixed_order_basis(order, (200, 200, 100), -Float32(π) / 6)
 
-    direct_povm = assemble_position_operators(rs, rs, basis)
-    mode_converter = diagm([cis(Float32(k * π / 6)) for k ∈ 0:order])
-    astig_povm = assemble_position_operators(rs, rs, basis)
-    unitary_transform!(astig_povm, mode_converter)
-    povm = compose_povm(direct_povm, astig_povm)
+    measurement = Measurement(assemble_position_operators(rs, rs, basis_d, basis_c))
 
-    println("Order $order: $(cond(povm))")
-end
-
-for order ∈ 1:5
-    basis = transverse_basis(order)
-    R = 2.5 * 0.5 * order
-    rs = LinRange(-R, R, 64)
-
-    direct_povm = assemble_position_operators(rs, rs, basis)
-    mode_converter = diagm([cis(Float32(k * π / 2)) for k ∈ 0:order])
-    astig_povm = assemble_position_operators(rs, rs, basis)
-    unitary_transform!(astig_povm, mode_converter)
-    povm = compose_povm(direct_povm, astig_povm)
-
-    println("Order $order: $(cond(povm))")
+    @show cond(measurement)
 end

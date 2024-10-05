@@ -56,7 +56,6 @@ mean(fid, dims=1)
 dims = 2:6
 
 fid_no_calib = Matrix{Float64}(undef, 100, length(dims))
-mthd = LinearInversion()
 
 p = Progress(prod(size(fid_no_calib)))
 Threads.@threads for n ∈ eachindex(dims)
@@ -71,6 +70,7 @@ Threads.@threads for n ∈ eachindex(dims)
         basis = positive_l_basis(dim, param)
         measurement = Measurement(assemble_position_operators(x, y, basis))
 
+        mthd = NormalEquations(measurement)
         pred_ρ = prediction(probs, measurement, mthd)[1]
 
         fid_no_calib[m, n] = fidelity(ρ, pred_ρ)

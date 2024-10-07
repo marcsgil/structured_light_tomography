@@ -12,7 +12,7 @@ end
 
 function get_decomposition!(buffer, traceless_part_slices, trace_part, rs, args...)
     for (n, r, slice) ∈ zip(eachindex(trace_part), rs, traceless_part_slices)
-        positive_l_basis!(buffer, r..., args...)
+        #positive_l_basis!(buffer, r..., args...)
         gell_mann_projection!(slice, buffer)
         trace_part[n] = sum(abs2, buffer)
     end
@@ -42,8 +42,16 @@ trace_part = zeros(Float32, length(x) * length(y))
 traceless_part = zeros(Float32, length(x) * length(y), 35)
 traceles_part_slices = eachslice(traceless_part, dims=1)
 
+@code_warntype get_decomposition!(buffer, traceles_part_slices, trace_part, rs, 200.0f0, 200.0f0, 50.0f0)
+
 get_decomposition!(buffer, traceles_part_slices, trace_part, rs, 200.0f0, 200.0f0, 50.0f0)
 get_decomposition!(buffers, traceles_part_slices, trace_part, rs, 200.0f0, 200.0f0, 50.0f0)
 
 @benchmark get_decomposition!($buffer, $traceles_part_slices, $trace_part, $rs, 200.0f0, 200.0f0, 50.0f0)
 @benchmark get_decomposition!($buffers, $traceles_part_slices, $trace_part, $rs, 200.0f0, 200.0f0, 50.0f0)
+##
+using AllocCheck
+val = check_allocs(get_decomposition!, (typeof(buffer), typeof(traceles_part_slices), typeof(trace_part), typeof(rs), Float32, Float32, Float32))
+
+results = check_allocs(\, (Matrix{Float64}, Vector{Float64}))
+results[3]

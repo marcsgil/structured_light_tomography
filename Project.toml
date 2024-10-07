@@ -1,4 +1,5 @@
 [deps]
+AllocCheck = "9b6a8646-10ed-4001-bbdc-1d2f46dfbb1a"
 BayesianTomography = "ae1f9aa5-51e1-43df-aa72-b1a458b33a1f"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"

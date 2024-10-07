@@ -1,24 +1,52 @@
-using LinearAlgebra
+using Base.Threads: nthreads, @spawn
 
-A = rand(Float32, 2 * 400^2, 35)
-b = rand(Float32, 2 * 400^2)
-θ = Array{Float32}(undef, 35)
+tmap!(args...; tasks_per_thread=2) = _tmap!(args..., tasks_per_thread)
 
-C = Array{Float32}(undef, 35, 35)
-d = Array{Float32}(undef, 35)
-##
+function _tmap!(f, dest::Array, itr, tasks_per_thread::Int)
+    chunk_size = max(1, length(itr) ÷ (tasks_per_thread * nthreads()))
 
-f(A, b) = A \ b
+    dest_chunk = Iterators.partition(dest, chunk_size)
+    itr_chunk = Iterators.partition(itr, chunk_size)
 
-function g!(C, d, A, b)
-    mul!(C, A', A)
-    mul!(d, A', b)
-    C \ d
+    map(dest_chunk, itr_chunk) do dest, itr
+        @spawn map!(f, dest, itr)
+    end .|> fetch
+
+    dest
 end
 
-f(A, b) ≈ g!(C, d, A, b)
+_tmap!(f, dest, itr::AbstractArray, ::Nothing) = map!(f, dest, itr)
 
-@benchmark f($A, $b)
-@benchmark g!($C, $d, $A, $b)
+function _tmap!(f, dest, itr, ::Nothing)
+    next = iterate(itr)
+    for n ∈ eachindex(dest)
+        val, state = next
+        dest[n] = f(val)
+        next = iterate(itr, state)
+        isnothing(next) && break
+    end
+    dest
+end
 ##
+itr = (i for i ∈ 1:10^6)
+dest = Vector{Int}(undef, 10^6)
+f(x) = x^2
 
+tmap!(f, dest, itr, tasks_per_thread=nothing)
+
+@which _tmap!(f, dest, itr, nothing)
+##
+@benchmark tmap!($f, $dest, $itr, tasks_per_thread=2)
+@benchmark map!($f, $dest, $itr)
+@benchmark tmap!2($f, $dest, $itr)
+##
+using CUDA
+
+itr = LinRange(0, 1, 10^6) |> Array |> cu
+dest = similar(itr)
+f(x) = x^2
+
+tmap!(x -> x^2, dest, itr)
+
+@benchmark tmap!($f, $dest, $itr)
+@benchmark map!($f, $dest, $itr)

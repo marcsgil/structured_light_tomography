@@ -13,13 +13,13 @@ basis_c = fixed_order_basis(5, param, -Float32(π) / 6)
 operators = assemble_position_operators(x, y, basis_d, basis_c)
 measurement = Measurement(operators)
 
-mthd = LinearInversion()
+mthd = NormalEquations(measurement)
 
 freqs = rand(Float32, length(x) * length(y) * 2)
 
 prediction(freqs, measurement, mthd)
 ##
-@benchmark assemble_position_operators($x, $y, $basis_d, $basis_c)
+@benchmark assemble_position_operators($x, $y, $basis_d)
 @benchmark Measurement($operators)
 @benchmark prediction($freqs, $measurement, $mthd)
 ##

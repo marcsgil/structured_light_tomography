@@ -1,7 +1,6 @@
-using BayesianTomography, HDF5, ProgressMeter, LinearAlgebra
+using QuantumMeasurements, HDF5, ProgressMeter, LinearAlgebra
 using CairoMakie
 includet("../Utils/basis.jl")
-includet("../Utils/position_operators.jl")
 includet("../Utils/obstructions.jl")
 includet("../Utils/model_fitting.jl")
 includet("../Utils/bootstraping.jl")
@@ -29,30 +28,29 @@ fit = calibration_fit(x, y, calibration)
 
 fit.param
 bg = round(UInt8, fit.param[5])
-basis = positive_l_basis(2, fit.param)
-operators = assemble_position_operators(x, y, basis)
 ##
 N = 3
-
 
 fid = Matrix{Float64}(undef, 100, N)
 pars = Vector{Float64}(undef, N)
 
-for n ∈ 1:3
+for n ∈ 1:N
     images, ρs, par = load_data(path, "images_$n", bg)
     pars[n] = par[2]
 
     radius = (x[end] - x[begin]) * par[1]
 
     Is = get_valid_indices(x, y, iris_obstruction, fit.param[1], fit.param[2], radius)
-    measurement = ProportionalMeasurement(operators[Is])
-    mthd = PreAllocatedLinearInversion(measurement)
+    rs = ((x, y) for x ∈ x, y ∈ y if iris_obstruction(x, y, fit.param[1], fit.param[2], radius))
+    itr = Iterators.map(r -> positive_l_basis(2, r, (1, fit.param...)), rs)
+    μ = ProportionalMeasurement(itr)
+
+    mthd = PreAllocatedLinearInversion(μ)
 
     Threads.@threads for m ∈ axes(images, 3)
         probs = images[:, :, m][Is]
         ρ = ρs[:, :, m]
-        pred_ρ = prediction(probs, measurement, mthd)[1]
-
+        pred_ρ = estimate_state(probs, μ, mthd)[1]
         fid[m, n] = fidelity(ρ, pred_ρ)
     end
 end

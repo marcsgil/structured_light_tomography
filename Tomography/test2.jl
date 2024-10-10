@@ -1,30 +1,27 @@
-using QuantumMeasurements, StructuredLight
+using QuantumMeasurements, AllocCheck
 
-function positive_l_basis!(dest, r, pars)
-    dim = length(dest)
-    x, y = r
-    sqrt_δA, x₀, y₀, w = pars
-    for n ∈ eachindex(dest)
-        p = dim - n
-        l = 2 - 2n # We calculate the negative value of l to get the conjugate
-        dest[n] = lg(x - x₀, y - y₀; w, p, l) * sqrt_δA
-    end
-    dest
-end
+include("../Utils/basis.jl")
 ##
-x = 1:400
-y = 1:400
+x = Float32.(1:224)
+y = Float32.(1:224)
 rs = Iterators.product(x, y)
 
-buffer = Vector{ComplexF32}(undef, 6)
-pars = (1, 200, 200, 50)
+buffer = Matrix{ComplexF32}(undef, 6, 512)
+pars = (1.0f0, 200.0f0, 200.0f0, 50.0f0)
 
-μ = empty_measurement(400^2, 6, Matrix{Float32})
-#μ = empty_measurement(400^2, 6, ProportionalMeasurement{Float32,Matrix{Float32}})
-update_measurement!(μ, buffer, rs, pars, positive_l_basis!)
+f!(buffer, r, pars) = fixed_order_basis!(buffer, r, pars)
+g!(buffer, r, pars) = fixed_order_basis!(buffer, r, pars, Float32(π) / 2)
+##
+μ = empty_measurement(2 * 400^2, 6, Matrix{Float32})
+μ1 = view(μ, 1:400^2, :)
+μ2 = view(μ, 400^2+1:2*400^2, :)
 
-@benchmark update_measurement!($μ, $buffer, $rs, $pars, $positive_l_basis!)
+multithreaded_update_measurement!(μ1, buffer, rs, pars, f!)
+multithreaded_update_measurement!(μ2, buffer, rs, pars, g!)
 
+@benchmark multithreaded_update_measurement!($μ1, $buffer, $rs, $pars, $f!)
+@benchmark multithreaded_update_measurement!($μ2, $buffer, $rs, $pars, $g!)
+##
 itr = Iterators.map(r -> positive_l_basis!(buffer, r, pars), rs)
 
 

@@ -1,4 +1,4 @@
-using QuantumMeasurements, HDF5, ProgressMeter, PositionMeasurements
+using QuantumMeasurements, HDF5, ProgressMeter
 includet("../Utils/model_fitting.jl")
 ##
 function load_data(path, key, bg)
@@ -27,8 +27,8 @@ fit_result = calibration_fit(x, y, calibration)
 bg = round(UInt8, fit_result.param[5])
 
 fit_result.param
-##
-empty_measurement(400^2, 6, ProportionalMeasurement{Float32,Matrix{Float32}})
+
+empty_measurement(400^2 * 2, 6, ProportionalMeasurement{Float32,Matrix{Float32}})
 ##
 dims = 2:6
 fid = Matrix{Float64}(undef, 100, length(dims))

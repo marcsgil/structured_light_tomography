@@ -31,10 +31,10 @@ function positive_l_basis(dim, r, pars)
     positive_l_basis!(buffer, r, pars)
 end
 
-function fixed_order_basis!(dest, r, pars)
+function fixed_order_basis!(dest, r, pars, phase=0)
     order = length(dest) - 1
     x, y = r
-    sqrt_δA, phase, x₀, y₀, w = pars
+    sqrt_δA, x₀, y₀, w = pars
     for j ∈ eachindex(dest)
         m = order + 1 - j
         n = j - 1
@@ -43,7 +43,7 @@ function fixed_order_basis!(dest, r, pars)
     dest
 end
 
-function fixed_order_basis(order, r, pars)
+function fixed_order_basis(order, r, pars, phase=0)
     buffer = Vector{complex(float(eltype(r)))}(undef, order + 1)
-    positive_l_basis!(buffer, r, pars)
+    positive_l_basis!(buffer, r, pars, phase)
 end

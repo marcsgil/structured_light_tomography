@@ -56,33 +56,6 @@ end
 
 mean(fid, dims=1)
 ##
-dim = 2
-images, ρs = load_data(path, "images_dim$dim", 0x02)
-μ = empty_measurement(length(rs), dim, Matrix{Float32})
-buffer = Vector{ComplexF32}(undef, dim)
-
-m = 1
-probs = @view images[:, :, m]
-ρ = @view ρs[:, :, m]
-
-param = (1, center_of_mass_and_waist(probs, 2 * (dim - 1))...)
-update_measurement!(μ, buffer, rs, param, positive_l_basis!)
-
-mthd = NormalEquations(μ)
-#mthd = LinearInversion()
-
-freqs = vec(normalize(images[:, :, m], 1))
-
-mthd isa NormalEquations
-
-@which estimate_state(freqs, μ, mthd)
-
-
-pred_ρ = estimate_state(probs, μ, mthd)[1]
-
-fid_no_calib[m, n] = fidelity(ρ, pred_ρ)
-next!(p)
-##
 dims = 2:6
 
 fid_no_calib = Matrix{Float64}(undef, 100, length(dims))
@@ -102,7 +75,6 @@ Threads.@threads for n ∈ eachindex(dims)
         update_measurement!(μ, buffer, rs, param, positive_l_basis!)
 
         mthd = NormalEquations(μ)
-        #mthd = LinearInversion()
         pred_ρ = estimate_state(probs, μ, mthd)[1]
 
         fid_no_calib[m, n] = fidelity(ρ, pred_ρ)

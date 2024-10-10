@@ -16,6 +16,13 @@ function get_obstructed_basis(basis, obstruction_func, args...; kwargs...)
     end
 end
 
-function get_valid_indices(x, y, obstruction_func, args...; kwargs...)
-    findall(r -> obstruction_func(r..., args...; kwargs...), collect(Iterators.product(x, y)))
+function get_valid_indices(x, y, obstruction_func, args...; flatten=false, kwargs...)
+    if flatten
+        itr = vec(collect(Iterators.product(x, y)))
+    else
+        itr = collect(Iterators.product(x, y))
+    end
+
+
+    findall(r -> obstruction_func(r..., args...; kwargs...), itr)
 end

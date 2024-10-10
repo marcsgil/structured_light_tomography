@@ -34,11 +34,16 @@ end
 function fixed_order_basis!(dest, r, pars)
     order = length(dest) - 1
     x, y = r
-    sqrt_δA, x₀, y₀, w = pars
+    sqrt_δA, phase, x₀, y₀, w = pars
     for j ∈ eachindex(dest)
         m = order + 1 - j
         n = j - 1
         dest[j] = hg(x - x₀, y - y₀; w, m, n) * cis(-j * phase) * sqrt_δA
     end
     dest
+end
+
+function fixed_order_basis(order, r, pars)
+    buffer = Vector{complex(float(eltype(r)))}(undef, order + 1)
+    positive_l_basis!(buffer, r, pars)
 end

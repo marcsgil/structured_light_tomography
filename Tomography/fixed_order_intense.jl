@@ -1,4 +1,4 @@
-using HDF5, BayesianTomography, ProgressMeter
+using HDF5, QuantumMeasurements, ProgressMeter
 
 includet("../Utils/model_fitting.jl")
 includet("../Utils/basis.jl")

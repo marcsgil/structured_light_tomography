@@ -7,7 +7,7 @@ includet("../Utils/bootstraping.jl")
 
 function load_data(path, order, bgs)
     images, ρs = h5open(path) do file
-        Float32.(read(file["images_order$order"])), conj.(read(file["labels_order$order"]))
+        Float32.(read(file["images_order$order"])), read(file["labels_order$order"])
     end
 
     for (n, slice) ∈ enumerate(eachslice(images, dims=3))
@@ -30,10 +30,18 @@ end
 
 x = Float32.(axes(calibration, 1))
 y = Float32.(axes(calibration, 2))
+rs = Iterators.product(x, y)
+npixels = length(x) * length(y)
+sqrt_δA = sqrt((x[2] - x[1]) * (y[2] - y[1]) / 2) # We divide by 2 because we have two images
 
 fit_d, fit_c = calibration_fit(x, y, calibration)
 
-fit_c.param
+f!(buffer, r, pars) = fixed_order_basis!(buffer, r, pars)
+g!(buffer, r, pars) = fixed_order_basis!(buffer, r, pars, Float32(π) / 6)
+
+
+pars_d = (sqrt_δA, fit_d.param...)
+pars_c = (sqrt_δA, fit_c.param...)
 ##
 orders = 1:5
 
@@ -42,17 +50,20 @@ fid = Matrix{Float32}(undef, length(orders), 100)
 @showprogress for (m, order) ∈ enumerate(orders)
     images, ρs = load_data(path, order, (fit_d.param[5], fit_c.param[5]))
 
-    basis_d = fixed_order_basis(order, fit_d.param)
-    basis_c = fixed_order_basis(order, fit_c.param, -Float32(π) / 6)
+    μ = empty_measurement(2 * npixels, order + 1, Matrix{Float32})
+    μ1 = view(μ, 1:npixels, :)
+    μ2 = view(μ, npixels+1:2*npixels, :)
+    buffer = Matrix{ComplexF32}(undef, order + 1, 512)
 
-    measurement = Measurement(assemble_position_operators(x, y, basis_d, basis_c))
+    multithreaded_update_measurement!(μ1, buffer, rs, pars_d, f!)
+    multithreaded_update_measurement!(μ2, buffer, rs, pars_c, g!)
 
-    mthd = PreAllocatedLinearInversion(measurement)
+    mthd = PreAllocatedLinearInversion(μ)
 
     Threads.@threads for n ∈ axes(images, 4)
         probs = @view images[:, :, :, n]
         ρ = @view ρs[:, :, n]
-        pred_ρ, _ = prediction(probs, measurement, mthd)
+        pred_ρ = estimate_state(probs, μ, mthd)[1]
 
         fid[m, n] = fidelity(ρ, pred_ρ)
     end
@@ -72,16 +83,20 @@ Threads.@threads for m ∈ eachindex(orders)
         slice = @view images[:, :, :, n]
         ρ = @view ρs[:, :, n]
 
-        param_d = center_of_mass_and_waist(view(slice, :, :, 1), order)
-        param_c = center_of_mass_and_waist(view(slice, :, :, 2), order)
+        param_d = (sqrt_δA, center_of_mass_and_waist(view(slice, :, :, 1), order)...)
+        param_c = (sqrt_δA, center_of_mass_and_waist(view(slice, :, :, 2), order)...)
 
-        basis_d = fixed_order_basis(order, fit_d.param)
-        basis_c = fixed_order_basis(order, fit_c.param, -Float32(π) / 6)
+        buffer = Matrix{ComplexF32}(undef, order + 1, 512)
 
-        measurement = Measurement(assemble_position_operators(x, y, basis_d, basis_c))
+        μ = empty_measurement(2 * npixels, order + 1, Matrix{Float32})
+        μ1 = view(μ, 1:npixels, :)
+        μ2 = view(μ, npixels+1:2*npixels, :)
 
-        mthd = NormalEquations(measurement)
-        pred_ρ = prediction(slice, measurement, mthd)[1]
+        multithreaded_update_measurement!(μ1, buffer, rs, pars_d, f!)
+        multithreaded_update_measurement!(μ2, buffer, rs, pars_c, g!)
+
+        mthd = NormalEquations(μ)
+        pred_ρ = estimate_state(slice, μ, mthd)[1]
         fid_no_calib[m, n] = fidelity(ρ, pred_ρ)
         next!(p)
     end

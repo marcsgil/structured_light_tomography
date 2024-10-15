@@ -1373,7 +1373,7 @@ version = "2.11.1"
     Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 
 [[deps.QuantumMeasurements]]
-deps = ["LinearAlgebra", "OnlineStats", "PrecompileTools", "Random"]
+deps = ["Distributions", "LinearAlgebra", "OnlineStats", "PrecompileTools", "Random"]
 path = "../QuantumMeasurements.jl"
 uuid = "5d8d2b8f-00a2-4aa7-ae68-34a984b4e8b6"
 version = "0.1.0"

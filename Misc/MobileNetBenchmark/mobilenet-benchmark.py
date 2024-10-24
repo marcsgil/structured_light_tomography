@@ -6,7 +6,7 @@ import numpy as np
 
 def build_model(device):
     # Create MobileNetV3 Large model
-    model = models.mobilenet_v3_small()
+    model = models.mobilenet_v3_small(num_classes=35)
 
     # Modify the first conv layer to accept 1 channel instead of 3
     original_conv = model.features[0][0]

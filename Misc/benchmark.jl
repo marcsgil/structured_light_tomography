@@ -2,6 +2,7 @@ using QuantumMeasurements, Random, LinearAlgebra, CUDA
 Random.seed!(0)
 
 includet("../Utils/basis.jl")
+includet("../Utils/model_fitting.jl")
 
 x = Float32.(1:224)
 y = Float32.(1:224)
@@ -12,10 +13,13 @@ param = (1.0f0, 112.0f0, 112.0f0, 20.0f0)
 μ2 = empty_measurement(length(rs), 6, Matrix{Float32})
 buffers = Matrix{ComplexF32}(undef, 6, 512)
 
+freqs = rand(Float32, length(x) * length(y))
+
+@info "Center of Mass and Waist:"
+@benchmark center_of_mass_and_waist($freqs, 2)
+
 @info "Measurement update:"
 display(@benchmark multithreaded_update_measurement!($μ, $buffers, $rs, $param, $positive_l_basis!))
-
-freqs = rand(Float32, length(x) * length(y))
 
 @info "Linear Inversion Estimation:"
 mthd = LinearInversion()

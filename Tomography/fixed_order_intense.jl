@@ -2,7 +2,6 @@ using HDF5, QuantumMeasurements, ProgressMeter
 
 includet("../Utils/model_fitting.jl")
 includet("../Utils/basis.jl")
-includet("../Utils/position_operators.jl")
 includet("../Utils/bootstraping.jl")
 
 function load_data(path, order, bgs)

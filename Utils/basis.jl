@@ -30,6 +30,6 @@ function fixed_order_basis!(dest, r, pars, phase=0)
 end
 
 function fixed_order_basis(order, r, pars, phase=0)
-    buffer = Vector{complex(float(eltype(r)))}(undef, order + 1)
+    buffer = Vector{complex(float(eltype(eltype(r))))}(undef, order + 1)
     fixed_order_basis!(buffer, r, pars, phase)
 end

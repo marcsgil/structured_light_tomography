@@ -13,7 +13,7 @@ function positive_l_basis!(dest, r, pars)
 end
 
 function positive_l_basis(dim, r, pars)
-    buffer = Vector{complex(float(eltype(r)))}(undef, dim)
+    buffer = Vector{complex(float(eltype(eltype(r))))}(undef, dim)
     positive_l_basis!(buffer, r, pars)
 end
 

@@ -14,7 +14,8 @@ for n ∈ (1, 2, 3)
     )
 end
 
-titles = ["x = $(x[1]); F = $(x[2])%" for x ∈ (("Inf", 99), ("-0.5w", 99), ("-1w", 98), ("-1.5w", 65))]
+titles = [L"F = (%$(x[1]) \pm  %$(x[2]))%" for x ∈ ((99.3, 0.1), (99.3, 0.1), (98.0, 0.2), (65, 3))]
+texts = [L"x_b = %$x" for x ∈ ("∞", "-0.5w", "-1.0w", "-1.5w")]
 Js = (
     100-70:100+70,
     100-70:100+70,
@@ -24,12 +25,13 @@ Js = (
 
 
 with_theme(theme_latexfonts()) do
-    fig = Figure(; size = (1400, 400), fontsize=30)
+    fig = Figure(; size = (1400, 400))
     for n ∈ eachindex(imgs)
-        ax = Axis(fig[1, n], aspect=DataAspect(), title = titles[n])
+        ax = Axis(fig[1, n], aspect=DataAspect(), title = titles[n], titlesize=24)
         heatmap!(ax, imgs[n][Js[n], Js[n]], colormap=:jet)
+        text!(ax, 0.95, 0, text=texts[n], color=:orange, space=:relative, align=(:right, :bottom), fontsize=32)
         hidedecorations!(ax)
     end
-    #save("/Users/marcsgil/Code/Presentation-Tomography-SL/Images/blade_progression.pdf", fig)
+    save("/Users/marcsgil/Code/Structured light tomography from position measurements/blade_progression.pdf", fig)
     fig
 end

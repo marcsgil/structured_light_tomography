@@ -1,4 +1,4 @@
-using HDF5, QuantumMeasurements, ProgressMeter
+using HDF5, QuantumMeasurements, ProgressMeter, LinearAlgebra
 
 includet("../Utils/model_fitting.jl")
 includet("../Utils/basis.jl")
@@ -107,5 +107,58 @@ vec(mean(fid_no_calib, dims=2))
 h5open("Results/fixed_order_intense.h5", "cw") do file
     file["fid"] = stack(bootstrap(slice) for slice ∈ eachslice(fid, dims=1))
     file["fid_no_calib"] = stack(bootstrap(slice) for slice ∈ eachslice(fid_no_calib, dims=1))
+    file["orders"] = collect(orders)
+end
+##
+# Single Image
+
+path = "Data/fixed_order_intense.h5"
+
+calibration = h5open(path) do file
+    read(file["calibration"])
+end
+
+x = Float32.(axes(calibration, 1))
+y = Float32.(axes(calibration, 2))
+rs = Iterators.product(x, y)
+npixels = length(x) * length(y)
+sqrt_δA = sqrt((x[2] - x[1]) * (y[2] - y[1])) # We divide by 2 because we have two images
+
+f!(buffer, r, pars) = fixed_order_basis!(buffer, r, pars)
+
+orders = 1:5
+fid = Matrix{Float64}(undef, length(orders), 100)
+
+p = Progress(prod(size(fid)))
+Threads.@threads for m ∈ eachindex(orders)
+    order = orders[m]
+    images, ρs = load_data(path, order, (0x02, 0x02))
+
+    for n ∈ axes(images, 4)
+        slice = @view images[:, :, 1, n]
+        ρ = @view ρs[:, :, n]
+
+        param = (sqrt_δA, center_of_mass_and_waist(slice, order)...)
+
+        buffer = Matrix{ComplexF32}(undef, order + 1, 512)
+
+        μ = empty_measurement(npixels, order + 1, Matrix{Float32})
+
+        multithreaded_update_measurement!(μ, buffer, rs, param, f!)
+
+        mthd = LinearInversion()
+        pred_ρ = estimate_state(slice, μ, mthd)[1]
+        fid[m, n] = fidelity(ρ, pred_ρ)
+        next!(p)
+    end
+end
+finish!(p)
+
+vec(mean(fid, dims=2))
+##
+stack(bootstrap(slice) for slice ∈ eachslice(fid, dims=1))
+##
+h5open("Results/fixed_order_intense_single_image.h5", "cw") do file
+    file["fid"] = stack(bootstrap(slice) for slice ∈ eachslice(fid, dims=1))
     file["orders"] = collect(orders)
 end
